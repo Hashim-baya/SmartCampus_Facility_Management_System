@@ -167,7 +167,13 @@ public class UserManagementServlet extends HttpServlet {
 
     private String validateUserInput(String name, String email, String password,
                                      String roleStr, String phone) {
-        if (!ValidationUtil.isValidName(name))        return "Name is required (2–120 characters).";
+        String trimmedName = (name == null) ? null : name.trim();
+        if (ValidationUtil.isBlank(trimmedName)
+                || trimmedName.length() < 2
+                || trimmedName.length() > 120
+                || !ValidationUtil.isValidName(trimmedName)) {
+            return "Name is required (2–120 characters).";
+        }
         if (!ValidationUtil.isValidEmail(email))      return "A valid email address is required.";
         if (!ValidationUtil.isValidPassword(password)) return "Password must be at least 6 characters.";
         if (!isValidEnum(User.Role.class, roleStr))   return "Invalid role selected.";
