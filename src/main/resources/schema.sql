@@ -69,12 +69,9 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
 ) ENGINE=InnoDB;
 
 -- ─────────────────────────────────────────────────────────────
--- Seed data – demo accounts (passwords are BCrypt hashes of the
--- values shown in the login page)
--- admin123   => $2a$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
--- lecturer123=> $2a$12$GudqsrBbVFVhQ4S49yNy5.T6dSnNfknxjCOcCMlYlDWfk.A05sQoe
--- janitor123 => $2a$12$TqvHfREpMb1fD1WUqZ3ZvuQWzJRf.8FqWAtYOSakLWkmhV1w01VOe
--- super123   => $2a$12$XQ0MNKXH2qPjXbBriuSITOS9z8JqmDL6mfLcPOQYcPAiAIz4hYxkO
+-- Seed data – demo accounts for local development/demo only.
+-- WARNING: Remove or replace these accounts and their passwords
+-- before deploying to production environments.
 -- ─────────────────────────────────────────────────────────────
 INSERT IGNORE INTO users (id, name, email, password, role, phone, department) VALUES
 (1, 'System Administrator', 'admin@egerton.ac.ke',
