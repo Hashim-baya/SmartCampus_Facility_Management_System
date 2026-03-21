@@ -194,7 +194,7 @@ public class MaintenanceRequestServlet extends HttpServlet {
         if (err != null) {
             req.setAttribute("error", err);
             req.setAttribute("request", existing);
-            req.getRequestDispatcher("/WEB-INF/views/shared/maintenance-request-detail.jsp").forward(req, resp);
+            req.getRequestDispatcher("/WEB-INF/views/shared/maintenance-requests.jsp").forward(req, resp);
             return;
         }
 
