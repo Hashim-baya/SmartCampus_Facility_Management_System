@@ -104,13 +104,13 @@
                     <label class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
                     <input type="email" name="email" class="form-control" id="emailInput"
                            placeholder="your@egerton.ac.ke"
-                           value="<%= emailValue != null ? emailValue : "admin@egerton.ac.ke" %>"
+                           value="<%= emailValue != null ? emailValue : "" %>"
                            required>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
                     <input type="password" name="password" class="form-control" id="passwordInput"
-                           placeholder="············" value="admin123" required>
+                           placeholder="············" required>
                 </div>
                 <button type="submit" class="btn-signin">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
@@ -151,6 +151,7 @@
         function fillDemo(email, password) {
             document.getElementById('emailInput').value = email;
             document.getElementById('passwordInput').value = password;
+            document.getElementById('loginForm').submit();
         }
     </script>
 </body>
