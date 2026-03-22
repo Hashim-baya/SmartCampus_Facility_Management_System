@@ -101,7 +101,7 @@
             <h2>Welcome back</h2>
             <form action="<%= request.getContextPath() %>/login" method="post" id="loginForm">
                 <div class="form-group">
-                    <label class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
+                    <label for="emailInput" class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
                     <input type="email" name="email" class="form-control" id="emailInput"
                            placeholder="your@egerton.ac.ke"
                            value="<%= emailValue != null ? emailValue : "" %>"
@@ -109,7 +109,7 @@
                            required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
+                    <label for="passwordInput" class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
                     <input type="password" name="password" class="form-control" id="passwordInput"
                            placeholder="············" autocomplete="off" required>
                 </div>

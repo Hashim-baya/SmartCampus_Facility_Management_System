@@ -76,7 +76,7 @@ public class DBInitializer implements ServletContextListener {
         String host    = getProperty("DB_HOST",           "localhost");
         String port    = getProperty("DB_PORT",           "3306");
         String adminUser = getProperty("DB_ADMIN_USER",   "root");
-        String adminPass = getProperty("DB_ADMIN_PASSWORD", "root");
+        String adminPass = getProperty("DB_ADMIN_PASSWORD", "@Has10201");
 
         String hostUrl = String.format(HOST_URL_TEMPLATE, host, port);
 
