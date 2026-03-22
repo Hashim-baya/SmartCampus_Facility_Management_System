@@ -7,6 +7,14 @@
     <display-name>SmartCampus Facility Management System</display-name>
 
     <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Database initialiser – runs schema.sql on startup       -->
+    <!-- Creates the database, tables, and demo seed data        -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <listener>
+        <listener-class>com.smartcampus.util.DBInitializer</listener-class>
+    </listener>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Authentication filter – protects every URL except public paths -->
     <!-- ═══════════════════════════════════════════════════════ -->
     <filter>

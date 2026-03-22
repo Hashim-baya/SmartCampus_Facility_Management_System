@@ -1,8 +1,27 @@
 -- SmartCampus Facility Management System - Database Schema
 -- Egerton University
+--
+-- Quick-start (run once as MySQL root):
+--   mysql -u root -p < schema.sql
+--
+-- The script is fully idempotent (IF NOT EXISTS / INSERT IGNORE) and
+-- safe to re-run.  It also creates a dedicated application user
+-- 'scm_app'@'localhost' with no password for use in development /
+-- demo environments.  For production, replace with a strong password.
 
 CREATE DATABASE IF NOT EXISTS smartcampus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE smartcampus;
+
+-- ─────────────────────────────────────────────────────────────
+-- Application database user (development / demo only)
+-- WARNING: The empty password below is intentional for local
+-- development only.  In production, set a strong password and
+-- configure DB_USER / DB_PASSWORD environment variables for the
+-- application instead of relying on these defaults.
+-- ─────────────────────────────────────────────────────────────
+CREATE USER IF NOT EXISTS 'scm_app'@'localhost' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON smartcampus.* TO 'scm_app'@'localhost';
+FLUSH PRIVILEGES;
 
 -- ─────────────────────────────────────────────────────────────
 -- Users table: stores all system users
