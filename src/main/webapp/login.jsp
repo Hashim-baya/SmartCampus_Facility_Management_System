@@ -151,6 +151,12 @@
         function fillDemo(email, password) {
             document.getElementById('emailInput').value = email;
             document.getElementById('passwordInput').value = password;
+            // Brief visual feedback before submitting
+            const btn = document.querySelector('.btn-signin');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Signing in…';
+            }
             document.getElementById('loginForm').submit();
         }
     </script>
