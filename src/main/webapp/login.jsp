@@ -105,12 +105,13 @@
                     <input type="email" name="email" class="form-control" id="emailInput"
                            placeholder="your@egerton.ac.ke"
                            value="<%= emailValue != null ? emailValue : "" %>"
+                           autocomplete="off"
                            required>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
                     <input type="password" name="password" class="form-control" id="passwordInput"
-                           placeholder="············" required>
+                           placeholder="············" autocomplete="off" required>
                 </div>
                 <button type="submit" class="btn-signin">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
