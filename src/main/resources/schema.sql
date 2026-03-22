@@ -1,8 +1,27 @@
 -- SmartCampus Facility Management System - Database Schema
 -- Egerton University
+--
+-- Quick-start (run once as MySQL root):
+--   mysql -u root -p < schema.sql
+--
+-- The script is fully idempotent (IF NOT EXISTS / INSERT IGNORE) and
+-- safe to re-run.  It also creates a dedicated application user
+-- 'scm_app'@'localhost' with no password for use in development /
+-- demo environments.  For production, replace with a strong password.
 
 CREATE DATABASE IF NOT EXISTS smartcampus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE smartcampus;
+
+-- ─────────────────────────────────────────────────────────────
+-- Application database user (development / demo only)
+-- WARNING: The empty password below is intentional for local
+-- development only.  In production, set a strong password and
+-- configure DB_USER / DB_PASSWORD environment variables for the
+-- application instead of relying on these defaults.
+-- ─────────────────────────────────────────────────────────────
+CREATE USER IF NOT EXISTS 'scm_app'@'localhost' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON smartcampus.* TO 'scm_app'@'localhost';
+FLUSH PRIVILEGES;
 
 -- ─────────────────────────────────────────────────────────────
 -- Users table: stores all system users
@@ -93,21 +112,17 @@ INSERT IGNORE INTO users (id, name, email, password, role, phone, department) VA
  '$2a$12$YylEmtjkMbs1sVkRyCiRa.h4GWkd7t5RKaQU1ep8NfwxR9TAmKF6G',
  'supervisor', '+254700000004', 'Facilities');
 
--- Fix passwords for any existing database that was seeded with incorrect hashes.
--- These UPDATE statements are idempotent: they only update rows whose stored hash
--- does not already match the intended demo password.
+-- Ensure demo account passwords are always correct (idempotent – safe to re-run).
+-- These UPDATE statements run unconditionally so that any existing database with
+-- incorrect hashes is automatically fixed when the schema is re-applied.
 UPDATE users SET password = '$2a$12$8dvqkQCV/XismkxR6/sEt.M5UR3269RycFU/prN/uMaIULYwu4sqm'
-    WHERE id = 1 AND email = 'admin@egerton.ac.ke'
-      AND password = '$2a$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+    WHERE id = 1 AND email = 'admin@egerton.ac.ke';
 UPDATE users SET password = '$2a$12$Jo/.e/mrsszbM1pAil4Qk.1rcYqT/qEqSwEYb8BZ7WvRXQeoLN4MO'
-    WHERE id = 2 AND email = 'swanjiku@egerton.ac.ke'
-      AND password = '$2a$12$GudqsrBbVFVhQ4S49yNy5.T6dSnNfknxjCOcCMlYlDWfk.A05sQoe';
+    WHERE id = 2 AND email = 'swanjiku@egerton.ac.ke';
 UPDATE users SET password = '$2a$12$uRwWXOUEHz7Ot6kCmozKcOeJN9OHQRRzyOiQ1HvlnvhPbEyy4dxou'
-    WHERE id = 3 AND email = 'jkamau@egerton.ac.ke'
-      AND password = '$2a$12$TqvHfREpMb1fD1WUqZ3ZvuQWzJRf.8FqWAtYOSakLWkmhV1w01VOe';
+    WHERE id = 3 AND email = 'jkamau@egerton.ac.ke';
 UPDATE users SET password = '$2a$12$YylEmtjkMbs1sVkRyCiRa.h4GWkd7t5RKaQU1ep8NfwxR9TAmKF6G'
-    WHERE id = 4 AND email = 'mchebet@egerton.ac.ke'
-      AND password = '$2a$12$XQ0MNKXH2qPjXbBriuSITOS9z8JqmDL6mfLcPOQYcPAiAIz4hYxkO';
+    WHERE id = 4 AND email = 'mchebet@egerton.ac.ke';
 
 INSERT IGNORE INTO facilities (id, name, location, facility_type, capacity, status, description) VALUES
 (1, 'SCI 101 – Lecture Hall A', 'Science Complex, Block A', 'classroom', 120, 'available', 'Large lecture hall with projector and AC'),

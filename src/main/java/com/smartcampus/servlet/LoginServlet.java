@@ -84,6 +84,10 @@ public class LoginServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Database error during login", e);
             req.setAttribute("error", "A system error occurred. Please try again later.");
             req.getRequestDispatcher("/login.jsp").forward(req, resp);
+        } catch (RuntimeException e) {
+            LOGGER.log(Level.SEVERE, "Unexpected error during login", e);
+            req.setAttribute("error", "A system error occurred. Please try again later.");
+            req.getRequestDispatcher("/login.jsp").forward(req, resp);
         }
     }
 

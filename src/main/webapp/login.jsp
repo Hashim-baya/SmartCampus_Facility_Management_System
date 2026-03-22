@@ -101,16 +101,17 @@
             <h2>Welcome back</h2>
             <form action="<%= request.getContextPath() %>/login" method="post" id="loginForm">
                 <div class="form-group">
-                    <label class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
+                    <label for="emailInput" class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
                     <input type="email" name="email" class="form-control" id="emailInput"
                            placeholder="your@egerton.ac.ke"
                            value="<%= emailValue != null ? emailValue : "" %>"
+                           autocomplete="off"
                            required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
+                    <label for="passwordInput" class="form-label"><i class="bi bi-lock-fill"></i> Password</label>
                     <input type="password" name="password" class="form-control" id="passwordInput"
-                           placeholder="············" required>
+                           placeholder="············" autocomplete="off" required>
                 </div>
                 <button type="submit" class="btn-signin">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
@@ -151,6 +152,12 @@
         function fillDemo(email, password) {
             document.getElementById('emailInput').value = email;
             document.getElementById('passwordInput').value = password;
+            // Brief visual feedback before submitting
+            const btn = document.querySelector('.btn-signin');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Signing in…';
+            }
             document.getElementById('loginForm').submit();
         }
     </script>
