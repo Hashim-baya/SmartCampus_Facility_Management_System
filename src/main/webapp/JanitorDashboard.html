@@ -303,6 +303,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         @media (max-width: 768px) {
@@ -312,6 +313,28 @@
             .main-content {
                 padding: 1rem;
             }
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: var(--egerton-green);
+            color: white;
+            border-color: var(--egerton-green);
         }
     </style>
 </head>
@@ -344,14 +367,21 @@
                 <!-- Welcome Header -->
                 <div class="welcome-header d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h1>Welcome, John Kamau</h1>
+                        <h1 id="welcomeName">Welcome, Janitor</h1>
                         <p>Janitor Dashboard — Your assigned tasks</p>
                     </div>
                     <div>
-                        <span class="badge bg-light text-dark p-2 shadow-sm">
-                            <i class="bi bi-person-circle"></i> Janitor | jkamau@egerton.ac.ke
+                        <span class="badge bg-light text-dark p-2 shadow-sm" id="userInfoBadge">
+                            <i class="bi bi-person-circle"></i> Loading...
                         </span>
                     </div>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All Offices</button>
+                    <button class="filter-btn" data-filter="pending">Pending Only</button>
+                    <button class="filter-btn" data-filter="completed">Completed Only</button>
                 </div>
 
                 <!-- Stats Cards -->
@@ -403,40 +433,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // ============= DATA =============
-    // Janitor assigned offices with tasks
-    let assignedOffices = [
-        {
-            id: 1,
-            officeNumber: "A101",
-            wing: "A",
-            floor: 1,
-            lecturer: "Prof. Sarah Wanjiku",
-            tasks: [
-                { id: 1, name: "Mopping", completed: false },
-                { id: 2, name: "Dusting", completed: false },
-                { id: 3, name: "Emptying Bins", completed: false },
-                { id: 4, name: "Replenishing Stationery", completed: false }
-            ],
-            isClean: false
-        },
-        {
-            id: 2,
-            officeNumber: "B102",
-            wing: "B",
-            floor: 1,
-            lecturer: "—",
-            tasks: [
-                { id: 1, name: "Mopping", completed: false },
-                { id: 2, name: "Dusting", completed: false },
-                { id: 3, name: "Emptying Bins", completed: false },
-                { id: 4, name: "Replenishing Stationery", completed: false }
-            ],
-            isClean: false
-        }
-    ];
-
+    // ============= GLOBAL VARIABLES =============
+    let currentJanitor = null;
+    let assignedOffices = [];
     let completedHistory = [];
+    let currentFilter = 'all';
 
     // ============= UTILITY FUNCTIONS =============
     function showToast(message, type = 'success') {
@@ -464,6 +465,101 @@
         };
     }
 
+    // Get current logged in janitor from localStorage
+    function getCurrentJanitor() {
+        const userEmail = localStorage.getItem('userEmail');
+        const userRole = localStorage.getItem('userRole');
+        
+        if (!userEmail || userRole !== 'janitor') {
+            showToast('Session expired. Please login again.', 'error');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
+            return null;
+        }
+        
+        // Get registered users from localStorage
+        const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+        const janitor = users.find(u => u.email === userEmail && u.role === 'janitor');
+        
+        if (!janitor) {
+            // Fallback to default if not found in registered users
+            return {
+                fullName: 'John Kamau',
+                email: userEmail,
+                phone: '0712345678',
+                roleData: {
+                    staffId: 'JAN-2024-001',
+                    wing: 'A'
+                }
+            };
+        }
+        
+        return janitor;
+    }
+
+    // Load assigned offices based on janitor's wing
+    function loadAssignedOffices() {
+        if (!currentJanitor) return;
+        
+        const janitorWing = currentJanitor.roleData?.wing || 'A';
+        const savedState = localStorage.getItem(`janitorOffices_${currentJanitor.email}`);
+        
+        if (savedState) {
+            try {
+                const state = JSON.parse(savedState);
+                assignedOffices = state.assignedOffices;
+                completedHistory = state.completedHistory;
+                return;
+            } catch(e) {}
+        }
+        
+        // Generate offices based on the janitor's assigned wing
+        const offices = [];
+        const officeNumbers = {
+            'A': ['A101', 'A102', 'A103', 'A104'],
+            'B': ['B101', 'B102', 'B103', 'B104'],
+            'C': ['C101', 'C102', 'C103', 'C104'],
+            'D': ['D101', 'D102', 'D103', 'D104'],
+            'All': ['A101', 'A102', 'B101', 'B102', 'C101', 'C102', 'D101', 'D102']
+        };
+        
+        const officesToCreate = janitorWing === 'All' ? officeNumbers['All'] : officeNumbers[janitorWing] || officeNumbers['A'];
+        
+        officesToCreate.forEach((officeNum, index) => {
+            const wing = officeNum.charAt(0);
+            const floor = wing === 'A' || wing === 'B' ? 1 : 2;
+            
+            offices.push({
+                id: index + 1,
+                officeNumber: officeNum,
+                wing: wing,
+                floor: floor,
+                lecturer: `Lecturer ${officeNum}`,
+                tasks: [
+                    { id: 1, name: "Mopping", completed: false },
+                    { id: 2, name: "Dusting", completed: false },
+                    { id: 3, name: "Emptying Bins", completed: false },
+                    { id: 4, name: "Replenishing Stationery", completed: false },
+                    { id: 5, name: "Window Cleaning", completed: false }
+                ],
+                isClean: false
+            });
+        });
+        
+        assignedOffices = offices;
+        completedHistory = [];
+    }
+
+    function saveState() {
+        if (!currentJanitor) return;
+        const state = {
+            assignedOffices: assignedOffices,
+            completedHistory: completedHistory
+        };
+        localStorage.setItem(`janitorOffices_${currentJanitor.email}`, JSON.stringify(state));
+    }
+
     function updateStats() {
         let totalTasks = 0;
         let completedTasks = 0;
@@ -481,7 +577,6 @@
         document.getElementById('totalCompleted').textContent = completedTasks;
         document.getElementById('totalPending').textContent = pendingTasks;
         
-        // Update overall progress
         const overallPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
         document.getElementById('overallProgress').innerHTML = `${overallPercent}% Complete`;
         
@@ -492,18 +587,25 @@
         const container = document.getElementById('officesList');
         if (!container) return;
         
-        container.innerHTML = '';
+        let filteredOffices = assignedOffices;
         
-        if (assignedOffices.length === 0) {
-            container.innerHTML = '<div class="card border-0 shadow-sm rounded-4"><div class="card-body text-center py-5"><i class="bi bi-check-circle text-success fs-1"></i><p class="mt-3 text-muted">No offices assigned at the moment</p></div></div>';
+        if (currentFilter === 'pending') {
+            filteredOffices = assignedOffices.filter(office => !office.isClean);
+        } else if (currentFilter === 'completed') {
+            filteredOffices = assignedOffices.filter(office => office.isClean);
+        }
+        
+        if (filteredOffices.length === 0) {
+            container.innerHTML = '<div class="card border-0 shadow-sm rounded-4"><div class="card-body text-center py-5"><i class="bi bi-check-circle text-success fs-1"></i><p class="mt-3 text-muted">No offices found in this category</p></div></div>';
             return;
         }
         
-        assignedOffices.forEach(office => {
+        container.innerHTML = '';
+        
+        filteredOffices.forEach(office => {
             const officeCard = document.createElement('div');
             officeCard.className = 'office-card';
             
-            // Calculate office progress
             const totalOfficeTasks = office.tasks.length;
             const completedOfficeTasks = office.tasks.filter(t => t.completed).length;
             const officeProgress = totalOfficeTasks > 0 ? (completedOfficeTasks / totalOfficeTasks) * 100 : 0;
@@ -516,7 +618,6 @@
                         <div>
                             <h4>${office.officeNumber}</h4>
                             <p class="office-location"><i class="bi bi-geo-alt"></i> Wing ${office.wing}, Floor ${office.floor}</p>
-                            <p class="office-location"><i class="bi bi-person-video3"></i> Lecturer: ${office.lecturer}</p>
                         </div>
                         <div>
                             ${office.isClean ? 
@@ -536,9 +637,7 @@
                             <input type="checkbox" class="task-checkbox" data-office-id="${office.id}" data-task-id="${task.id}" 
                                 ${task.completed ? 'checked' : ''} ${office.isClean ? 'disabled' : ''}
                                 onchange="toggleTask(${office.id}, ${task.id})">
-                            <label class="task-label ${task.completed ? 'completed' : ''}" onclick="document.querySelector('.task-checkbox[data-office-id=\\'${office.id}\\'][data-task-id=\\'${task.id}\\']').click()">
-                                ${task.name}
-                            </label>
+                            <label class="task-label ${task.completed ? 'completed' : ''}">${task.name}</label>
                         </div>
                     `).join('')}
                 </div>
@@ -581,7 +680,6 @@
             if (allTasksCompleted && !office.isClean) {
                 office.isClean = true;
                 
-                // Add to history
                 const completedRecord = {
                     id: Date.now(),
                     officeNumber: office.officeNumber,
@@ -614,11 +712,12 @@
         completedHistory.forEach(record => {
             const historyItem = document.createElement('div');
             historyItem.className = 'task-item';
+            historyItem.style.borderBottom = '1px solid var(--border-color)';
             historyItem.innerHTML = `
-                <div class="task-content">
-                    <p class="task-title"><strong>${record.officeNumber}</strong> (Wing ${record.wing}, Floor ${record.floor})</p>
-                    <p class="text-muted small mb-1">Completed: ${record.tasksCompleted}/${record.totalTasks} tasks</p>
-                    <small class="text-muted">${record.date}</small>
+                <div style="flex: 1;">
+                    <p style="margin-bottom: 4px;"><strong>${record.officeNumber}</strong> (Wing ${record.wing}, Floor ${record.floor})</p>
+                    <p style="margin-bottom: 2px; font-size: 0.75rem; color: var(--text-muted);">Completed: ${record.tasksCompleted}/${record.totalTasks} tasks</p>
+                    <small style="color: var(--text-muted);">${record.date}</small>
                 </div>
                 <div>
                     <span class="badge-completed"><i class="bi bi-check-circle"></i> Done</span>
@@ -628,64 +727,13 @@
         });
     }
 
-    function saveState() {
-        const state = {
-            assignedOffices: assignedOffices,
-            completedHistory: completedHistory
-        };
-        localStorage.setItem('janitorDashboardState', JSON.stringify(state));
-    }
-
-    function loadState() {
-        const saved = localStorage.getItem('janitorDashboardState');
-        if (saved) {
-            try {
-                const state = JSON.parse(saved);
-                assignedOffices = state.assignedOffices;
-                completedHistory = state.completedHistory || [];
-            } catch(e) {
-                resetToDefault();
-            }
-        } else {
-            resetToDefault();
+    function updateUserInterface() {
+        if (currentJanitor) {
+            document.getElementById('welcomeName').innerHTML = `Welcome, ${currentJanitor.fullName.split(' ')[0]}`;
+            const staffId = currentJanitor.roleData?.staffId || 'Not assigned';
+            const wing = currentJanitor.roleData?.wing || 'A';
+            document.getElementById('userInfoBadge').innerHTML = `<i class="bi bi-person-circle"></i> Janitor | ${currentJanitor.email} | Wing ${wing} | ID: ${staffId}`;
         }
-        
-        renderOffices();
-        renderHistory();
-    }
-    
-    function resetToDefault() {
-        assignedOffices = [
-            {
-                id: 1,
-                officeNumber: "A101",
-                wing: "A",
-                floor: 1,
-                lecturer: "Prof. Sarah Wanjiku",
-                tasks: [
-                    { id: 1, name: "Mopping", completed: false },
-                    { id: 2, name: "Dusting", completed: false },
-                    { id: 3, name: "Emptying Bins", completed: false },
-                    { id: 4, name: "Replenishing Stationery", completed: false }
-                ],
-                isClean: false
-            },
-            {
-                id: 2,
-                officeNumber: "B102",
-                wing: "B",
-                floor: 1,
-                lecturer: "—",
-                tasks: [
-                    { id: 1, name: "Mopping", completed: false },
-                    { id: 2, name: "Dusting", completed: false },
-                    { id: 3, name: "Emptying Bins", completed: false },
-                    { id: 4, name: "Replenishing Stationery", completed: false }
-                ],
-                isClean: false
-            }
-        ];
-        completedHistory = [];
     }
 
     // Navigation
@@ -704,9 +752,32 @@
             }
         });
     });
-    
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-filter');
+            renderOffices();
+        });
+    });
+
     // Initialize
-    loadState();
+    function init() {
+        currentJanitor = getCurrentJanitor();
+        
+        if (!currentJanitor) {
+            return;
+        }
+        
+        loadAssignedOffices();
+        updateUserInterface();
+        renderOffices();
+        renderHistory();
+    }
+    
+    init();
     
     // Expose functions globally
     window.toggleTask = toggleTask;
