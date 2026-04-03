@@ -49,35 +49,31 @@ public class MaintenanceRequestServlet extends HttpServlet {
                 int id = ValidationUtil.parseIntOrDefault(idParam, -1);
                 if (id < 1) { resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid ID"); return; }
 
-                MaintenanceRequest mr = null;
+                MaintenanceRequest mr = mrDAO.findById(id);
+                if (mr == null) {
+                    // Either the request does not exist or the user is not authorised to view it
+                    resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
+
+                boolean authorised;
                 switch (user.getRole()) {
                     case admin:
                     case supervisor:
-                        mr = mrDAO.findById(id);
+                        authorised = true;
                         break;
                     case lecturer:
-                        for (MaintenanceRequest r : mrDAO.findByReporter(user.getId())) {
-                            if (r.getId() == id) {
-                                mr = r;
-                                break;
-                            }
-                        }
+                        authorised = mr.getReportedBy() == user.getId();
                         break;
                     case janitor:
-                        for (MaintenanceRequest r : mrDAO.findByAssignee(user.getId())) {
-                            if (r.getId() == id) {
-                                mr = r;
-                                break;
-                            }
-                        }
+                        authorised = mr.getAssignedTo() == user.getId();
                         break;
                     default:
                         resp.sendError(HttpServletResponse.SC_FORBIDDEN);
                         return;
                 }
 
-                if (mr == null) {
-                    // Either the request does not exist or the user is not authorised to view it
+                if (!authorised) {
                     resp.sendError(HttpServletResponse.SC_FORBIDDEN);
                     return;
                 }
