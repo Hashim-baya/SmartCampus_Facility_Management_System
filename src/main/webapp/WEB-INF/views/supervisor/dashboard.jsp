@@ -6,16 +6,22 @@
     String ctx = request.getContextPath();
 
     @SuppressWarnings("unchecked")
-    List<MaintenanceRequest> allRequests = (List<MaintenanceRequest>) request.getAttribute("allRequests");
-    if (allRequests == null) allRequests = Collections.emptyList();
+    List<CleaningTask> allTasks = (List<CleaningTask>) request.getAttribute("allTasks");
+    if (allTasks == null) allTasks = Collections.emptyList();
 
     @SuppressWarnings("unchecked")
     List<User> janitors = (List<User>) request.getAttribute("janitors");
     if (janitors == null) janitors = Collections.emptyList();
 
-    int pendingCount    = request.getAttribute("pendingCount")    != null ? (int) request.getAttribute("pendingCount")    : 0;
-    int inProgressCount = request.getAttribute("inProgressCount") != null ? (int) request.getAttribute("inProgressCount") : 0;
-    int resolvedCount   = request.getAttribute("resolvedCount")   != null ? (int) request.getAttribute("resolvedCount")   : 0;
+    long pendingCount = 0, inProgressCount = 0, completedCount = 0;
+    for (CleaningTask t : allTasks) {
+        switch (t.getStatus()) {
+            case pending:     pendingCount++;     break;
+            case in_progress: inProgressCount++;  break;
+            case completed:   completedCount++;   break;
+            default: break;
+        }
+    }
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,14 +47,10 @@
                      box-shadow:0 2px 8px rgba(0,0,0,.04); border:1px solid #e9ecef; }
         .table-container { background:#fff; border-radius:16px; padding:1.5rem;
                            box-shadow:0 2px 8px rgba(0,0,0,.04); border:1px solid #e9ecef; }
-        .badge-priority-low    { background:#d1fae5; color:#065f46; }
-        .badge-priority-medium { background:#fef9c3; color:#713f12; }
-        .badge-priority-high   { background:#fee2e2; color:#991b1b; }
-        .badge-priority-urgent { background:#7f1d1d; color:#fff; }
         .badge-status-pending     { background:#fff3e0; color:#92400e; }
         .badge-status-in_progress { background:#dbeafe; color:#1e40af; }
-        .badge-status-resolved    { background:#d1fae5; color:#065f46; }
-        .badge-status-closed      { background:#f3f4f6; color:#374151; }
+        .badge-status-completed   { background:#d1fae5; color:#065f46; }
+        .badge-status-skipped     { background:#f3f4f6; color:#374151; }
     </style>
 </head>
 <body>
@@ -71,7 +73,7 @@
           <div class="stat-card text-center">
             <div style="font-size:2rem;color:#f59e0b;"><i class="bi bi-hourglass-split"></i></div>
             <h3 class="fw-bold fs-2 mb-0"><%= pendingCount %></h3>
-            <p class="text-muted small">Pending Requests</p>
+            <p class="text-muted small">Pending Tasks</p>
           </div>
         </div>
         <div class="col-sm-6 col-xl-4">
@@ -84,56 +86,37 @@
         <div class="col-sm-6 col-xl-4">
           <div class="stat-card text-center">
             <div style="font-size:2rem;color:#00A651;"><i class="bi bi-check2-circle"></i></div>
-            <h3 class="fw-bold fs-2 mb-0"><%= resolvedCount %></h3>
-            <p class="text-muted small">Resolved</p>
+            <h3 class="fw-bold fs-2 mb-0"><%= completedCount %></h3>
+            <p class="text-muted small">Completed</p>
           </div>
         </div>
       </div>
 
       <div class="table-container">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-semibold mb-0">All Maintenance Requests</h5>
-          <a href="<%= ctx %>/maintenance-requests" class="btn btn-sm btn-outline-success">View All</a>
+          <h5 class="fw-semibold mb-0">All Cleaning Tasks</h5>
+          <a href="<%= ctx %>/cleaning-tasks" class="btn btn-sm btn-outline-success">View All</a>
         </div>
-        <% if (allRequests.isEmpty()) { %>
-        <p class="text-muted text-center py-3">No maintenance requests found.</p>
+        <% if (allTasks.isEmpty()) { %>
+        <p class="text-muted text-center py-3">No cleaning tasks found.</p>
         <% } else { %>
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light">
               <tr>
-                <th>Title</th><th>Facility</th><th>Reporter</th>
-                <th>Priority</th><th>Status</th><th>Assigned To</th><th>Actions</th>
+                <th>Facility</th><th>Assigned To</th><th>Scheduled Date</th><th>Status</th><th>Notes</th>
               </tr>
             </thead>
             <tbody>
               <% int shown = 0;
-                 for (MaintenanceRequest r : allRequests) {
+                 for (CleaningTask t : allTasks) {
                      if (shown++ >= 15) break; %>
               <tr>
-                <td class="fw-medium"><%= r.getTitle() %></td>
-                <td class="text-muted small"><%= r.getFacilityName() %></td>
-                <td class="text-muted small"><%= r.getReportedByName() %></td>
-                <td><span class="badge rounded-pill badge-priority-<%= r.getPriority().name() %> text-capitalize"><%= r.getPriority().name() %></span></td>
-                <td><span class="badge rounded-pill badge-status-<%= r.getStatus().name() %> text-capitalize"><%= r.getStatus().name().replace("_"," ") %></span></td>
-                <td class="text-muted small"><%= r.getAssignedToName() != null ? r.getAssignedToName() : "Unassigned" %></td>
-                <td>
-                  <!-- Assign dropdown -->
-                  <% if (r.getStatus() == MaintenanceRequest.Status.pending && !janitors.isEmpty()) { %>
-                  <form method="post" action="<%= ctx %>/maintenance-requests" class="d-flex gap-1">
-                    <input type="hidden" name="action" value="assign">
-                    <input type="hidden" name="id" value="<%= r.getId() %>">
-                    <select name="assigneeId" class="form-select form-select-sm" style="width:130px;">
-                      <% for (User j : janitors) { %>
-                      <option value="<%= j.getId() %>"><%= j.getName() %></option>
-                      <% } %>
-                    </select>
-                    <button class="btn btn-sm btn-primary">Assign</button>
-                  </form>
-                  <% } else { %>
-                  <span class="text-muted small">—</span>
-                  <% } %>
-                </td>
+                <td class="fw-medium"><%= t.getFacilityName() %></td>
+                <td class="text-muted small"><%= t.getAssignedToName() != null ? t.getAssignedToName() : "Unassigned" %></td>
+                <td class="text-muted small"><%= t.getScheduledDate() %></td>
+                <td><span class="badge rounded-pill badge-status-<%= t.getStatus().name() %> text-capitalize"><%= t.getStatus().name().replace("_"," ") %></span></td>
+                <td class="text-muted small"><%= t.getNotes() != null ? t.getNotes() : "" %></td>
               </tr>
               <% } %>
             </tbody>

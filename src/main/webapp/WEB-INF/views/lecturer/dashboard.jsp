@@ -6,10 +6,6 @@
     String ctx = request.getContextPath();
 
     @SuppressWarnings("unchecked")
-    List<MaintenanceRequest> myRequests = (List<MaintenanceRequest>) request.getAttribute("myRequests");
-    if (myRequests == null) myRequests = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
     List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
     if (facilities == null) facilities = Collections.emptyList();
 %>
@@ -37,14 +33,6 @@
                      box-shadow:0 2px 8px rgba(0,0,0,.04); border:1px solid #e9ecef; }
         .table-container { background:#fff; border-radius:16px; padding:1.5rem;
                            box-shadow:0 2px 8px rgba(0,0,0,.04); border:1px solid #e9ecef; }
-        .badge-priority-low    { background:#d1fae5; color:#065f46; }
-        .badge-priority-medium { background:#fef9c3; color:#713f12; }
-        .badge-priority-high   { background:#fee2e2; color:#991b1b; }
-        .badge-priority-urgent { background:#7f1d1d; color:#fff; }
-        .badge-status-pending     { background:#fff3e0; color:#92400e; }
-        .badge-status-in_progress { background:#dbeafe; color:#1e40af; }
-        .badge-status-resolved    { background:#d1fae5; color:#065f46; }
-        .badge-status-closed      { background:#f3f4f6; color:#374151; }
     </style>
 </head>
 <body>
@@ -65,54 +53,30 @@
       <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-4">
           <div class="stat-card text-center">
-            <div style="font-size:2rem;color:#00A651;"><i class="bi bi-tools"></i></div>
-            <h3 class="fw-bold fs-2 mb-0"><%= myRequests.size() %></h3>
-            <p class="text-muted small">My Requests</p>
-          </div>
-        </div>
-        <div class="col-sm-6 col-xl-4">
-          <div class="stat-card text-center">
             <div style="font-size:2rem;color:#0d6efd;"><i class="bi bi-building-fill"></i></div>
             <h3 class="fw-bold fs-2 mb-0"><%= facilities.size() %></h3>
             <p class="text-muted small">Available Facilities</p>
           </div>
         </div>
-        <div class="col-sm-6 col-xl-4">
-          <div class="stat-card text-center">
-            <div style="font-size:2rem;color:#dc3545;"><i class="bi bi-exclamation-circle-fill"></i></div>
-            <h3 class="fw-bold fs-2 mb-0">
-              <% long pending = myRequests.stream().filter(r -> r.getStatus() == MaintenanceRequest.Status.pending).count(); %>
-              <%= pending %>
-            </h3>
-            <p class="text-muted small">Pending Requests</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-semibold mb-0">My Maintenance Requests</h5>
-        <a href="<%= ctx %>/maintenance-requests" class="btn btn-sm btn-success">
-          <i class="bi bi-plus-circle-fill me-1"></i> New Request
-        </a>
       </div>
 
       <div class="table-container">
-        <% if (myRequests.isEmpty()) { %>
-        <p class="text-muted text-center py-4">No maintenance requests found. Click "New Request" to submit one.</p>
+        <h5 class="fw-semibold mb-3">Available Facilities</h5>
+        <% if (facilities.isEmpty()) { %>
+        <p class="text-muted text-center py-4">No facilities are currently available.</p>
         <% } else { %>
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light">
-              <tr><th>Title</th><th>Facility</th><th>Priority</th><th>Status</th><th>Date</th></tr>
+              <tr><th>Name</th><th>Location</th><th>Type</th><th>Capacity</th></tr>
             </thead>
             <tbody>
-              <% for (MaintenanceRequest r : myRequests) { %>
+              <% for (Facility f : facilities) { %>
               <tr>
-                <td class="fw-medium"><%= r.getTitle() %></td>
-                <td class="text-muted small"><%= r.getFacilityName() %></td>
-                <td><span class="badge rounded-pill badge-priority-<%= r.getPriority().name() %> text-capitalize"><%= r.getPriority().name() %></span></td>
-                <td><span class="badge rounded-pill badge-status-<%= r.getStatus().name() %> text-capitalize"><%= r.getStatus().name().replace("_"," ") %></span></td>
-                <td class="text-muted small"><%= r.getCreatedAt() != null ? r.getCreatedAt().toLocalDate() : "" %></td>
+                <td class="fw-medium"><%= f.getName() %></td>
+                <td class="text-muted small"><%= f.getLocation() %></td>
+                <td class="text-muted small text-capitalize"><%= f.getFacilityType().name() %></td>
+                <td class="text-muted small"><%= f.getCapacity() %></td>
               </tr>
               <% } %>
             </tbody>

@@ -90,16 +90,6 @@
         <url-pattern>/facilities</url-pattern>
     </servlet-mapping>
 
-    <!-- Maintenance Request CRUD -->
-    <servlet>
-        <servlet-name>MaintenanceRequestServlet</servlet-name>
-        <servlet-class>com.smartcampus.servlet.MaintenanceRequestServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>MaintenanceRequestServlet</servlet-name>
-        <url-pattern>/maintenance-requests</url-pattern>
-    </servlet-mapping>
-
     <!-- Cleaning Task CRUD -->
     <servlet>
         <servlet-name>CleaningTaskServlet</servlet-name>

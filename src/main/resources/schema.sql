@@ -57,25 +57,6 @@ CREATE TABLE IF NOT EXISTS facilities (
 ) ENGINE=InnoDB;
 
 -- ─────────────────────────────────────────────────────────────
--- Maintenance requests table
--- ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS maintenance_requests (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    facility_id     INT           NOT NULL,
-    reported_by     INT           NOT NULL,          -- user id
-    assigned_to     INT,                             -- janitor/supervisor user id
-    title           VARCHAR(200)  NOT NULL,
-    description     TEXT          NOT NULL,
-    priority        ENUM('low','medium','high','urgent') NOT NULL DEFAULT 'medium',
-    status          ENUM('pending','in_progress','resolved','closed') NOT NULL DEFAULT 'pending',
-    created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_mr_facility FOREIGN KEY (facility_id) REFERENCES facilities(id) ON DELETE CASCADE,
-    CONSTRAINT fk_mr_reporter FOREIGN KEY (reported_by) REFERENCES users(id),
-    CONSTRAINT fk_mr_assignee FOREIGN KEY (assigned_to)  REFERENCES users(id)
-) ENGINE=InnoDB;
-
--- ─────────────────────────────────────────────────────────────
 -- Cleaning tasks table
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS cleaning_tasks (
@@ -134,10 +115,6 @@ INSERT IGNORE INTO facilities (id, name, location, facility_type, capacity, stat
 (3, 'B101', 'Wing B', 'office', 10, 'available', 'Wing B ground floor office'),
 (4, 'B102', 'Wing B', 'office', 10, 'available', 'Wing B ground floor office'),
 (5, 'C101', 'Wing C', 'office', 10, 'available', 'Wing C ground floor office');
-
-INSERT IGNORE INTO maintenance_requests (id, facility_id, reported_by, assigned_to, title, description, priority, status) VALUES
-(1, 1, 2, 3, 'Broken projector', 'The projector in office A101 stopped working.', 'high', 'pending'),
-(2, 3, 2, 3, 'Leaking tap', 'The tap in office B101 is leaking.', 'medium', 'in_progress');
 
 INSERT IGNORE INTO cleaning_tasks (id, facility_id, assigned_to, scheduled_date, status, notes) VALUES
 (1, 1, 3, CURDATE(), 'pending', 'Regular morning cleaning of A101'),

@@ -9,10 +9,6 @@
     List<CleaningTask> myTasks = (List<CleaningTask>) request.getAttribute("myTasks");
     if (myTasks == null) myTasks = Collections.emptyList();
 
-    @SuppressWarnings("unchecked")
-    List<MaintenanceRequest> assignedRequests = (List<MaintenanceRequest>) request.getAttribute("assignedRequests");
-    if (assignedRequests == null) assignedRequests = Collections.emptyList();
-
     int todayCount = request.getAttribute("todayCount") != null ? (int) request.getAttribute("todayCount") : 0;
 %>
 <!DOCTYPE html>
@@ -75,13 +71,6 @@
             <p class="text-muted small">Total Assigned Tasks</p>
           </div>
         </div>
-        <div class="col-sm-6 col-xl-4">
-          <div class="stat-card text-center">
-            <div style="font-size:2rem;color:#dc3545;"><i class="bi bi-tools"></i></div>
-            <h3 class="fw-bold fs-2 mb-0"><%= assignedRequests.size() %></h3>
-            <p class="text-muted small">Maintenance Requests</p>
-          </div>
-        </div>
       </div>
 
       <!-- Cleaning Tasks -->
@@ -126,46 +115,6 @@
         <% } %>
       </div>
 
-      <!-- Assigned Maintenance Requests -->
-      <div class="table-container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-semibold mb-0">Assigned Maintenance Requests</h5>
-          <a href="<%= ctx %>/maintenance-requests" class="btn btn-sm btn-outline-success">View All</a>
-        </div>
-        <% if (assignedRequests.isEmpty()) { %>
-        <p class="text-muted text-center py-3">No maintenance requests assigned.</p>
-        <% } else { %>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr><th>Title</th><th>Facility</th><th>Priority</th><th>Status</th><th>Update</th></tr>
-            </thead>
-            <tbody>
-              <% for (MaintenanceRequest r : assignedRequests) { %>
-              <tr>
-                <td class="fw-medium"><%= r.getTitle() %></td>
-                <td class="text-muted small"><%= r.getFacilityName() %></td>
-                <td><span class="badge rounded-pill text-capitalize" style="background:#fee2e2;color:#991b1b;"><%= r.getPriority().name() %></span></td>
-                <td><span class="badge rounded-pill text-capitalize" style="background:#dbeafe;color:#1e40af;"><%= r.getStatus().name().replace("_"," ") %></span></td>
-                <td>
-                  <form method="post" action="<%= ctx %>/maintenance-requests" class="d-flex gap-1">
-                    <input type="hidden" name="action" value="updateStatus">
-                    <input type="hidden" name="id" value="<%= r.getId() %>">
-                    <select name="status" class="form-select form-select-sm" style="width:130px;">
-                      <option value="pending"     <%= r.getStatus() == MaintenanceRequest.Status.pending     ? "selected" : "" %>>Pending</option>
-                      <option value="in_progress" <%= r.getStatus() == MaintenanceRequest.Status.in_progress ? "selected" : "" %>>In Progress</option>
-                      <option value="resolved"    <%= r.getStatus() == MaintenanceRequest.Status.resolved    ? "selected" : "" %>>Resolved</option>
-                    </select>
-                    <button class="btn btn-sm btn-primary">Update</button>
-                  </form>
-                </td>
-              </tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        <% } %>
-      </div>
     </main>
   </div>
 </div>

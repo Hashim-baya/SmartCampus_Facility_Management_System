@@ -21,15 +21,12 @@
     <a href="<%= ctx %>/cleaning-tasks"     class="nav-link-custom <%= "cleaning".equals(activePage) ? "active" : "" %>"><i class="bi bi-bucket-fill"></i> Cleaning Tasks</a>
     <% } else if ("lecturer".equals(userRole)) { %>
     <a href="<%= ctx %>/lecturer/dashboard"  class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="<%= ctx %>/maintenance-requests" class="nav-link-custom <%= "requests".equals(activePage) ? "active" : "" %>"><i class="bi bi-tools"></i> My Requests</a>
     <a href="<%= ctx %>/facilities"           class="nav-link-custom <%= "facilities".equals(activePage) ? "active" : "" %>"><i class="bi bi-building-fill"></i> Facilities</a>
     <% } else if ("janitor".equals(userRole)) { %>
     <a href="<%= ctx %>/janitor/dashboard"   class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
     <a href="<%= ctx %>/cleaning-tasks"      class="nav-link-custom <%= "cleaning".equals(activePage) ? "active" : "" %>"><i class="bi bi-bucket-fill"></i> My Tasks</a>
-    <a href="<%= ctx %>/maintenance-requests" class="nav-link-custom <%= "requests".equals(activePage) ? "active" : "" %>"><i class="bi bi-tools"></i> Assigned Requests</a>
     <% } else if ("supervisor".equals(userRole)) { %>
     <a href="<%= ctx %>/supervisor/dashboard" class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="<%= ctx %>/maintenance-requests"  class="nav-link-custom <%= "requests".equals(activePage) ? "active" : "" %>"><i class="bi bi-tools"></i> Maintenance</a>
     <a href="<%= ctx %>/cleaning-tasks"        class="nav-link-custom <%= "cleaning".equals(activePage) ? "active" : "" %>"><i class="bi bi-bucket-fill"></i> Cleaning Tasks</a>
     <% } %>
 
