@@ -22,8 +22,8 @@ public class DBConnection {
 
     private static final String DEFAULT_URL  = "jdbc:mysql://localhost:3306/smartcampus"
             + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8";
-    private static final String DEFAULT_USER = "root";
-    private static final String DEFAULT_PASS = "@Has10201";
+    private static final String DEFAULT_USER = "scm_app";
+    private static final String DEFAULT_PASS = "";
 
     static {
         try {

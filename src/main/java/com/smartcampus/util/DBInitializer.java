@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  * <table>
  *   <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
  *   <tr><td>DB_ADMIN_USER</td><td>root</td><td>MySQL user that can CREATE DATABASE</td></tr>
- *   <tr><td>DB_ADMIN_PASSWORD</td><td>root</td><td>Password for DB_ADMIN_USER</td></tr>
+ *   <tr><td>DB_ADMIN_PASSWORD</td><td>(empty)</td><td>Password for DB_ADMIN_USER</td></tr>
  *   <tr><td>DB_HOST</td><td>localhost</td><td>MySQL host</td></tr>
  *   <tr><td>DB_PORT</td><td>3306</td><td>MySQL port</td></tr>
  * </table>
@@ -76,7 +76,7 @@ public class DBInitializer implements ServletContextListener {
         String host    = getProperty("DB_HOST",           "localhost");
         String port    = getProperty("DB_PORT",           "3306");
         String adminUser = getProperty("DB_ADMIN_USER",   "root");
-        String adminPass = getProperty("DB_ADMIN_PASSWORD", "@Has10201");
+        String adminPass = getProperty("DB_ADMIN_PASSWORD", "");
 
         String hostUrl = String.format(HOST_URL_TEMPLATE, host, port);
 
