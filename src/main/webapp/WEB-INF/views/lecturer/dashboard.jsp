@@ -425,7 +425,7 @@
                 <div class="task-content">
                     <p class="task-title"><strong>${report.taskName}</strong> - ${report.date}</p>
                     <p class="text-muted small mb-1"><strong>Reason:</strong> ${report.reason}</p>
-                    ${report.notes ? `<p class="text-muted small"><strong>Notes:</strong> ${report.notes}</p>` : ''}
+                    \${report.notes ? `<p class="text-muted small"><strong>Notes:</strong> ${report.notes}</p>` : ''}
                     <span class="badge bg-warning text-dark">${report.status}</span>
                 </div>`;
             container.appendChild(div);
