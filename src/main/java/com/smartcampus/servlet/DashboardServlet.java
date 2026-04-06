@@ -1,16 +1,24 @@
 package com.smartcampus.servlet;
 
 import com.smartcampus.dao.FacilityDAO;
+import com.smartcampus.dao.JanitorReportDAO;
+import com.smartcampus.dao.LecturerCheckinDAO;
+import com.smartcampus.dao.TaskActivityDAO;
 import com.smartcampus.dao.UserDAO;
 import com.smartcampus.dao.CleaningTaskDAO;
 import com.smartcampus.model.CleaningTask;
 import com.smartcampus.model.Facility;
+import com.smartcampus.model.TaskActivity;
 import com.smartcampus.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,9 +32,12 @@ public class DashboardServlet extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(DashboardServlet.class.getName());
 
-    private final UserDAO                userDAO   = new UserDAO();
-    private final FacilityDAO            facDAO    = new FacilityDAO();
-    private final CleaningTaskDAO        ctDAO     = new CleaningTaskDAO();
+    private final UserDAO                userDAO     = new UserDAO();
+    private final FacilityDAO            facDAO      = new FacilityDAO();
+    private final CleaningTaskDAO        ctDAO       = new CleaningTaskDAO();
+    private final JanitorReportDAO       reportDAO   = new JanitorReportDAO();
+    private final TaskActivityDAO        activityDAO = new TaskActivityDAO();
+    private final LecturerCheckinDAO     checkinDAO  = new LecturerCheckinDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -54,17 +65,35 @@ public class DashboardServlet extends HttpServlet {
                     jspPath = "/WEB-INF/views/admin/dashboard.jsp";
                     break;
                 case lecturer:
+                    Facility assignedOffice = facDAO.findByLecturerId(user.getId());
+                    req.setAttribute("assignedOffice", assignedOffice);
+                    boolean checkedInToday = false;
+                    if (assignedOffice != null) {
+                        checkedInToday = checkinDAO.hasCheckedIn(
+                                user.getId(), assignedOffice.getId(), LocalDate.now());
+                    }
+                    req.setAttribute("checkedInToday", checkedInToday);
                     req.setAttribute("facilities",    facDAO.findByStatus(Facility.Status.available));
                     jspPath = "/WEB-INF/views/lecturer/dashboard.jsp";
                     break;
                 case janitor:
-                    req.setAttribute("myTasks",       ctDAO.findByJanitor(user.getId()));
-                    req.setAttribute("todayCount",    ctDAO.countTodayByJanitor(user.getId()));
+                    List<CleaningTask> myTasks = ctDAO.findByJanitor(user.getId());
+                    req.setAttribute("myTasks",    myTasks);
+                    req.setAttribute("todayCount", ctDAO.countTodayByJanitor(user.getId()));
+
+                    // Pre-load (and auto-generate) activity checklists for each task
+                    Map<Integer, List<TaskActivity>> activitiesMap = new LinkedHashMap<>();
+                    for (CleaningTask t : myTasks) {
+                        activitiesMap.put(t.getId(), activityDAO.findOrGenerateForTask(t));
+                    }
+                    req.setAttribute("activitiesMap", activitiesMap);
                     jspPath = "/WEB-INF/views/janitor/dashboard.jsp";
                     break;
                 case supervisor:
-                    req.setAttribute("allTasks",      ctDAO.findAll());
-                    req.setAttribute("janitors",      userDAO.findByRole(User.Role.janitor));
+                    req.setAttribute("allTasks",        ctDAO.findAll());
+                    req.setAttribute("janitors",        userDAO.findByRole(User.Role.janitor));
+                    req.setAttribute("facilities",      facDAO.findAll());
+                    req.setAttribute("lecturerReports", reportDAO.findAll());
                     jspPath = "/WEB-INF/views/supervisor/dashboard.jsp";
                     break;
                 default:

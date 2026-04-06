@@ -2,8 +2,10 @@ package com.smartcampus.servlet;
 
 import com.smartcampus.dao.CleaningTaskDAO;
 import com.smartcampus.dao.FacilityDAO;
+import com.smartcampus.dao.TaskActivityDAO;
 import com.smartcampus.dao.UserDAO;
 import com.smartcampus.model.CleaningTask;
+import com.smartcampus.model.TaskActivity;
 import com.smartcampus.model.User;
 import com.smartcampus.util.ValidationUtil;
 import jakarta.servlet.ServletException;
@@ -12,6 +14,10 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,9 +36,10 @@ public class CleaningTaskServlet extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(CleaningTaskServlet.class.getName());
 
-    private final CleaningTaskDAO ctDAO   = new CleaningTaskDAO();
-    private final FacilityDAO     facDAO  = new FacilityDAO();
-    private final UserDAO         userDAO = new UserDAO();
+    private final CleaningTaskDAO ctDAO       = new CleaningTaskDAO();
+    private final FacilityDAO     facDAO      = new FacilityDAO();
+    private final UserDAO         userDAO     = new UserDAO();
+    private final TaskActivityDAO activityDAO = new TaskActivityDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -42,14 +49,26 @@ public class CleaningTaskServlet extends HttpServlet {
         if (user == null) { resp.sendRedirect(req.getContextPath() + "/login"); return; }
 
         try {
+            List<CleaningTask> tasks;
             switch (user.getRole()) {
                 case janitor:
-                    req.setAttribute("tasks", ctDAO.findByJanitor(user.getId()));
+                    tasks = ctDAO.findByJanitor(user.getId());
                     break;
                 default:
-                    req.setAttribute("tasks", ctDAO.findAll());
+                    tasks = ctDAO.findAll();
                     break;
             }
+            req.setAttribute("tasks", tasks);
+
+            // For janitors, pre-load (and auto-generate) activities for each task
+            if (user.getRole() == User.Role.janitor) {
+                Map<Integer, List<TaskActivity>> activitiesMap = new LinkedHashMap<>();
+                for (CleaningTask t : tasks) {
+                    activitiesMap.put(t.getId(), activityDAO.findOrGenerateForTask(t));
+                }
+                req.setAttribute("activitiesMap", activitiesMap);
+            }
+
             req.setAttribute("facilities", facDAO.findAll());
             req.setAttribute("janitors",   userDAO.findByRole(User.Role.janitor));
             req.getRequestDispatcher("/WEB-INF/views/shared/cleaning-tasks.jsp").forward(req, resp);
@@ -72,15 +91,62 @@ public class CleaningTaskServlet extends HttpServlet {
 
         try {
             switch (action) {
-                case "create":       handleCreate(req, resp, user); break;
-                case "updateStatus": handleUpdateStatus(req, resp, user); break;
-                case "delete":       handleDelete(req, resp, user); break;
+                case "create":           handleCreate(req, resp, user); break;
+                case "reassign":         handleReassign(req, resp, user); break;
+                case "updateStatus":     handleUpdateStatus(req, resp, user); break;
+                case "completeActivity": handleCompleteActivity(req, resp, user); break;
+                case "delete":           handleDelete(req, resp, user); break;
                 default: resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action: " + action); break;
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "DB error in CleaningTaskServlet POST", e);
             handleError(req, resp, "A database error occurred.");
         }
+    }
+
+    private void handleReassign(HttpServletRequest req, HttpServletResponse resp, User user)
+            throws IOException, SQLException {
+
+        if (user.getRole() != User.Role.admin && user.getRole() != User.Role.supervisor) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        int id = ValidationUtil.parseIntOrDefault(req.getParameter("id"), -1);
+        if (id < 1) { resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid task ID"); return; }
+
+        String janitorIdStr = req.getParameter("janitorId");
+        if (!ValidationUtil.isPositiveInt(janitorIdStr)) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid janitor");
+            return;
+        }
+
+        int janitorId = Integer.parseInt(janitorIdStr.trim());
+        ctDAO.updateAssignedTo(id, janitorId);
+        LOGGER.log(Level.INFO, "Task {0} reassigned to janitorId={1} by userId={2}",
+                new Object[]{id, janitorId, user.getId()});
+        resp.sendRedirect(req.getContextPath() + "/supervisor/dashboard?success=reassigned");
+    }
+
+    private void handleCompleteActivity(HttpServletRequest req, HttpServletResponse resp, User user)
+            throws IOException, SQLException {
+
+        // Only janitors can tick off their own task activities
+        if (user.getRole() != User.Role.janitor) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        int activityId = ValidationUtil.parseIntOrDefault(req.getParameter("activityId"), -1);
+        if (activityId < 1) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid activity ID");
+            return;
+        }
+        String doneStr = req.getParameter("done");
+        boolean done = "true".equalsIgnoreCase(doneStr) || "1".equals(doneStr);
+
+        activityDAO.setDone(activityId, done);
+        resp.sendRedirect(req.getContextPath() + "/cleaning-tasks?success=activityUpdated");
     }
 
     // ─── Action handlers ─────────────────────────────────────
@@ -120,8 +186,19 @@ public class CleaningTaskServlet extends HttpServlet {
             doGet(req, resp); return;
         }
 
+        if (scheduledDate.isBefore(LocalDate.now())) {
+            req.setAttribute("error", "Scheduled date must be today or a future date.");
+            doGet(req, resp); return;
+        }
+
+        int facilityId = Integer.parseInt(facilityIdStr.trim());
+        if (ctDAO.existsByFacilityAndDate(facilityId, scheduledDate, -1)) {
+            req.setAttribute("error", "This office is already assigned to a janitor on the selected date.");
+            doGet(req, resp); return;
+        }
+
         CleaningTask task = new CleaningTask();
-        task.setFacilityId(Integer.parseInt(facilityIdStr.trim()));
+        task.setFacilityId(facilityId);
         task.setAssignedTo(Integer.parseInt(janitorIdStr.trim()));
         task.setScheduledDate(scheduledDate);
         task.setStatus(isValidEnum(CleaningTask.Status.class, statusStr)
@@ -130,7 +207,11 @@ public class CleaningTaskServlet extends HttpServlet {
 
         ctDAO.create(task);
         LOGGER.log(Level.INFO, "Cleaning task created by userId={0}", user.getId());
-        resp.sendRedirect(req.getContextPath() + "/cleaning-tasks?success=created");
+        if (user.getRole() == User.Role.supervisor) {
+            resp.sendRedirect(req.getContextPath() + "/supervisor/dashboard?success=assigned");
+        } else {
+            resp.sendRedirect(req.getContextPath() + "/cleaning-tasks?success=created");
+        }
     }
 
     private void handleUpdateStatus(HttpServletRequest req, HttpServletResponse resp, User user)
