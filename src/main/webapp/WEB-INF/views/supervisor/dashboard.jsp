@@ -13,6 +13,10 @@
     List<User> janitors = (List<User>) request.getAttribute("janitors");
     if (janitors == null) janitors = Collections.emptyList();
 
+    @SuppressWarnings("unchecked")
+    List<JanitorReport> lecturerReports = (List<JanitorReport>) request.getAttribute("lecturerReports");
+    if (lecturerReports == null) lecturerReports = Collections.emptyList();
+
     long pendingCount = 0, inProgressCount = 0, completedCount = 0;
     for (CleaningTask t : allTasks) {
         switch (t.getStatus()) {
@@ -180,7 +184,7 @@
           <div class="col-md-3">
             <div class="stat-card">
               <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
-              <h3>0</h3>
+              <h3><%= lecturerReports.size() %></h3>
               <p>Disputed</p>
             </div>
           </div>
@@ -344,7 +348,45 @@
         <div class="table-container">
           <h5><i class="bi bi-flag text-success"></i> Dispute Reports</h5>
           <p class="text-muted small">Reports filed by lecturers regarding cleaning quality</p>
+          <% if (lecturerReports.isEmpty()) { %>
           <div class="text-center py-4 text-muted">No dispute reports</div>
+          <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-custom align-middle">
+              <thead>
+                <tr>
+                  <th>Lecturer</th>
+                  <th>Task / Office</th>
+                  <th>Rating</th>
+                  <th>Reason</th>
+                  <th>Notes</th>
+                  <th>Reported At</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% for (JanitorReport r : lecturerReports) { %>
+                <tr>
+                  <td><strong><%= r.getLecturerName() != null ? r.getLecturerName() : "Unknown" %></strong></td>
+                  <td><%= r.getTaskName() %></td>
+                  <td>
+                    <%
+                      int stars = r.getRating();
+                      for (int s = 1; s <= 5; s++) {
+                          if (s <= stars) { %><i class="bi bi-star-fill" style="color:#f0a500;font-size:0.85rem;"></i><% }
+                          else           { %><i class="bi bi-star"      style="color:#ccc;font-size:0.85rem;"></i><% }
+                      }
+                    %>
+                    <small class="ms-1 text-muted">(<%= stars %>/5)</small>
+                  </td>
+                  <td style="max-width:220px;"><small><%= r.getReason() %></small></td>
+                  <td style="max-width:160px;"><small><%= r.getNotes() != null && !r.getNotes().isEmpty() ? r.getNotes() : "—" %></small></td>
+                  <td><small><%= r.getReportedAt() != null ? r.getReportedAt().toString().replace("T", " ").substring(0, 16) : "—" %></small></td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
         </div>
       </div>
 
