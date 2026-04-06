@@ -12,6 +12,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="ctx" content="<%= request.getContextPath() %>">
     <title>Lecturer Dashboard | SmartCampus - Egerton University</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -209,6 +210,18 @@
             <input type="text" class="form-control" id="reportTaskDisplay" readonly>
           </div>
           <div class="mb-3">
+            <label class="form-label fw-semibold">Cleaning Quality Rating</label>
+            <div class="d-flex gap-2 align-items-center" id="starRating">
+              <% for (int s = 1; s <= 5; s++) { %>
+              <i class="bi bi-star-fill star-icon" data-value="<%= s %>"
+                 style="font-size:1.5rem;cursor:pointer;color:#ccc;transition:color 0.15s;"
+                 title="<%= s %> star<%= s > 1 ? "s" : "" %>"></i>
+              <% } %>
+              <small class="text-muted ms-1" id="ratingLabel">Select a rating</small>
+            </div>
+            <input type="hidden" id="reportRating" value="3">
+          </div>
+          <div class="mb-3">
             <label class="form-label fw-semibold">Reason for Dissatisfaction</label>
             <textarea class="form-control" id="reportReason" rows="3"
                       placeholder="Please explain why you're unsatisfied with this task..." required></textarea>
@@ -376,26 +389,70 @@
         document.getElementById('reportTaskDisplay').value = taskName;
         document.getElementById('reportReason').value      = '';
         document.getElementById('reportNotes').value       = '';
+        document.getElementById('reportRating').value      = '3';
+        updateStars(3);
         new bootstrap.Modal(document.getElementById('reportModal')).show();
     }
+
+    function updateStars(value) {
+        const stars = document.querySelectorAll('.star-icon');
+        const labels = ['', 'Poor', 'Fair', 'Average', 'Good', 'Excellent'];
+        stars.forEach(s => {
+            s.style.color = parseInt(s.dataset.value) <= value ? '#f0a500' : '#ccc';
+        });
+        const label = document.getElementById('ratingLabel');
+        if (label) label.textContent = value ? labels[value] + ' (' + value + '/5)' : 'Select a rating';
+    }
+
+    // Star rating interaction
+    document.querySelectorAll('.star-icon').forEach(star => {
+        star.addEventListener('click', () => {
+            const val = parseInt(star.dataset.value);
+            document.getElementById('reportRating').value = val;
+            updateStars(val);
+        });
+        star.addEventListener('mouseover', () => updateStars(parseInt(star.dataset.value)));
+        star.addEventListener('mouseout',  () => updateStars(parseInt(document.getElementById('reportRating').value) || 3));
+    });
 
     function submitReport() {
         const taskId   = parseInt(document.getElementById('reportTaskId').value);
         const taskName = document.getElementById('reportTaskName').value;
-        const reason   = document.getElementById('reportReason').value;
-        const notes    = document.getElementById('reportNotes').value;
+        const rating   = parseInt(document.getElementById('reportRating').value) || 3;
+        const reason   = document.getElementById('reportReason').value.trim();
+        const notes    = document.getElementById('reportNotes').value.trim();
         if (!reason) { showToast('Please provide a reason for your dissatisfaction', 'error'); return; }
 
-        const task = currentTasks.find(t => t.id === taskId);
-        if (task) {
-            task.reported = true;
-            reports.unshift({ id: Date.now(), taskName, reason, notes, date: new Date().toLocaleString(), status: 'Pending Review' });
-            showToast('Report sent to supervisor regarding "' + taskName + '"', 'info');
-            bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
-            saveState();
-            renderTasks();
-            renderReports();
-        }
+        const submitBtn = document.getElementById('submitReportBtn');
+        submitBtn.disabled = true;
+
+        const params = new URLSearchParams({ taskName, rating, reason, notes });
+        fetch(window.location.origin + document.querySelector('meta[name="ctx"]').content + '/lecturer/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
+        })
+        .then(r => r.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            if (data.success) {
+                const task = currentTasks.find(t => t.id === taskId);
+                if (task) task.reported = true;
+                reports.unshift({ id: data.id || Date.now(), taskName, rating, reason, notes,
+                                  date: new Date().toLocaleString(), status: 'Submitted' });
+                showToast('Report sent to supervisor regarding "' + taskName + '"', 'info');
+                bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
+                saveState();
+                renderTasks();
+                renderReports();
+            } else {
+                showToast(data.message || 'Failed to submit report', 'error');
+            }
+        })
+        .catch(() => {
+            submitBtn.disabled = false;
+            showToast('Network error. Please try again.', 'error');
+        });
     }
 
     function handleCheckIn() {
@@ -419,13 +476,17 @@
         }
         container.innerHTML = '';
         reports.forEach(report => {
+            const stars = Array.from({length: 5}, (_, i) =>
+                `<i class="bi bi-star${i < (report.rating || 3) ? '-fill' : ''}" style="color:${i < (report.rating || 3) ? '#f0a500' : '#ccc'};font-size:0.9rem;"></i>`
+            ).join('');
             const div = document.createElement('div');
             div.className = 'task-item';
             div.innerHTML = `
                 <div class="task-content">
                     <p class="task-title"><strong>${report.taskName}</strong> - ${report.date}</p>
+                    <p class="text-muted small mb-1">${stars}</p>
                     <p class="text-muted small mb-1"><strong>Reason:</strong> ${report.reason}</p>
-                    \${report.notes ? `<p class="text-muted small"><strong>Notes:</strong> ${report.notes}</p>` : ''}
+                    ${report.notes ? `<p class="text-muted small"><strong>Notes:</strong> ${report.notes}</p>` : ''}
                     <span class="badge bg-warning text-dark">${report.status}</span>
                 </div>`;
             container.appendChild(div);
