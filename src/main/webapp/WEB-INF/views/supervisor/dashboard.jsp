@@ -90,8 +90,10 @@
 
         .stat-card { background: var(--card-white); border-radius: 20px; padding: 1.2rem;
                      box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border-color);
-                     transition: transform 0.2s; text-align: center; }
-        .stat-card:hover { transform: translateY(-3px); }
+                     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; text-align: center;
+                     cursor: pointer; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,166,81,0.12); }
+        .stat-card.stat-active { border-color: var(--egerton-green); box-shadow: 0 0 0 3px rgba(0,166,81,0.18); transform: translateY(-3px); }
         .stat-icon { width: 48px; height: 48px;
                      background: linear-gradient(135deg, rgba(0,166,81,0.1), rgba(210,172,103,0.1));
                      border-radius: 16px; display: flex; align-items: center; justify-content: center;
@@ -206,29 +208,29 @@
 
         <!-- Stats Cards -->
         <div class="row mb-4">
-          <div class="col-md-3">
-            <div class="stat-card">
+          <div class="col-6 col-md-3 mb-3 mb-md-0">
+            <div class="stat-card" data-nav="monitor" data-filter="completed" title="Click to view completed tasks">
               <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
               <h3><%= completedCount %></h3>
               <p>Completed</p>
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="stat-card">
+          <div class="col-6 col-md-3 mb-3 mb-md-0">
+            <div class="stat-card" data-nav="reports" title="Click to view dispute reports">
               <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
               <h3><%= lecturerReports.size() %></h3>
               <p>Disputed</p>
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="stat-card">
+          <div class="col-6 col-md-3">
+            <div class="stat-card" data-nav="monitor" data-filter="in_progress" title="Click to view in-progress tasks">
               <div class="stat-icon"><i class="bi bi-bell"></i></div>
               <h3><%= activeAlerts %></h3>
               <p>Active Alerts</p>
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="stat-card">
+          <div class="col-6 col-md-3">
+            <div class="stat-card" data-nav="monitor" data-filter="pending" title="Click to view pending tasks">
               <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
               <h3><%= pendingCount %></h3>
               <p>Pending</p>
@@ -286,8 +288,18 @@
       <!-- Live Monitor Section -->
       <div id="monitorSection" style="display:none;">
         <div class="table-container">
-          <h5><i class="bi bi-tv text-success"></i> Live Task Monitor</h5>
-          <p class="text-muted small mb-3">Real-time tracking of all cleaning tasks</p>
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="mb-0"><i class="bi bi-tv text-success"></i> Live Task Monitor</h5>
+              <p class="text-muted small mb-0">Real-time tracking of all cleaning tasks</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0" id="monitorFilterBar">
+              <button class="btn btn-sm btn-success" data-status-filter="all"><i class="bi bi-grid"></i> All</button>
+              <button class="btn btn-sm btn-outline-secondary" data-status-filter="completed"><i class="bi bi-check2-circle"></i> Completed</button>
+              <button class="btn btn-sm btn-outline-secondary" data-status-filter="in_progress"><i class="bi bi-hourglass-split"></i> In Progress</button>
+              <button class="btn btn-sm btn-outline-secondary" data-status-filter="pending"><i class="bi bi-clock"></i> Pending</button>
+            </div>
+          </div>
           <% if (allTasks.isEmpty()) { %>
           <div class="text-center py-4 text-muted">No tasks found</div>
           <% } else { %>
@@ -302,15 +314,16 @@
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="monitorTableBody">
                 <% for (CleaningTask t : allTasks) {
                      String sc = "status-pending";
                      String sl = "Pending";
-                     if (t.getStatus() == CleaningTask.Status.completed)   { sc = "status-completed"; sl = "Completed"; }
-                     else if (t.getStatus() == CleaningTask.Status.in_progress) { sc = "status-progress";  sl = "In Progress"; }
-                     else if (t.getStatus() == CleaningTask.Status.skipped) { sc = "status-skipped";   sl = "Skipped"; }
+                     String ds = "pending";
+                     if (t.getStatus() == CleaningTask.Status.completed)   { sc = "status-completed"; sl = "Completed";  ds = "completed"; }
+                     else if (t.getStatus() == CleaningTask.Status.in_progress) { sc = "status-progress";  sl = "In Progress"; ds = "in_progress"; }
+                     else if (t.getStatus() == CleaningTask.Status.skipped) { sc = "status-skipped";   sl = "Skipped";    ds = "skipped"; }
                 %>
-                <tr>
+                <tr data-status="<%= ds %>">
                   <td><strong><%= t.getFacilityName() %></strong></td>
                   <td><span class="<%= sc %>"><%= sl %></span></td>
                   <td><%= t.getScheduledDate() %></td>
@@ -328,6 +341,7 @@
               </tbody>
             </table>
           </div>
+          <div id="monitorNoResults" class="text-center py-3 text-muted d-none">No tasks match the selected filter.</div>
           <% } %>
         </div>
       </div>
@@ -537,23 +551,77 @@
         new bootstrap.Modal(document.getElementById('reassignModal')).show();
     }
 
-    // Wire up reassign buttons via event delegation (no inline onclick)
+    // ── Section navigation ──────────────────────────────────────────────────
+    function navigateToSection(section, statusFilter) {
+        const sections = { dashboard: 'dashboardSection', monitor: 'monitorSection', staff: 'staffSection', reports: 'reportsSection' };
+        Object.values(sections).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        const target = sections[section];
+        if (target) document.getElementById(target).style.display = 'block';
+
+        // Update active state on all nav links (desktop + mobile drawer)
+        document.querySelectorAll('.nav-link-custom').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.nav-link-custom[data-section="' + section + '"]').forEach(l => l.classList.add('active'));
+
+        // Update active state on stat cards
+        document.querySelectorAll('.stat-card[data-nav]').forEach(c => c.classList.remove('stat-active'));
+        if (statusFilter) {
+            document.querySelectorAll('.stat-card[data-nav="' + section + '"][data-filter="' + statusFilter + '"]')
+                    .forEach(c => c.classList.add('stat-active'));
+        }
+
+        if (section === 'monitor') {
+            applyMonitorFilter(statusFilter || 'all');
+        }
+    }
+
+    // ── Monitor filter ──────────────────────────────────────────────────────
+    function applyMonitorFilter(filter) {
+        const tbody = document.getElementById('monitorTableBody');
+        const noResults = document.getElementById('monitorNoResults');
+        if (!tbody) return;
+
+        let visible = 0;
+        tbody.querySelectorAll('tr').forEach(row => {
+            const status = row.getAttribute('data-status');
+            const show = (filter === 'all' || status === filter);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        if (noResults) noResults.classList.toggle('d-none', visible > 0);
+
+        // Highlight active filter button
+        document.querySelectorAll('[data-status-filter]').forEach(btn => {
+            const active = btn.getAttribute('data-status-filter') === filter;
+            btn.classList.toggle('btn-success', active);
+            btn.classList.toggle('btn-outline-secondary', !active);
+        });
+    }
+
+    // ── Event delegation (reassign + filter buttons) ───────────────────────
     document.addEventListener('click', e => {
-        const btn = e.target.closest('.btn-reassign');
-        if (btn) openReassignModal(btn);
+        const reassignBtn = e.target.closest('.btn-reassign');
+        if (reassignBtn) { openReassignModal(reassignBtn); return; }
+
+        const filterBtn = e.target.closest('[data-status-filter]');
+        if (filterBtn) { applyMonitorFilter(filterBtn.getAttribute('data-status-filter')); return; }
     });
 
-    // Section navigation (driven by sidebar data-section links)
+    // ── Sidebar / mobile-drawer section links ──────────────────────────────
     document.querySelectorAll('.nav-link-custom[data-section]').forEach(link => {
         link.addEventListener('click', e => {
             e.preventDefault();
-            const section = link.getAttribute('data-section');
-            document.querySelectorAll('.nav-link-custom').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            document.getElementById('dashboardSection').style.display = section === 'dashboard' ? 'block' : 'none';
-            document.getElementById('monitorSection').style.display   = section === 'monitor'   ? 'block' : 'none';
-            document.getElementById('staffSection').style.display     = section === 'staff'     ? 'block' : 'none';
-            document.getElementById('reportsSection').style.display   = section === 'reports'   ? 'block' : 'none';
+            navigateToSection(link.getAttribute('data-section'));
+        });
+    });
+
+    // ── Stat card click → navigate to respective section ───────────────────
+    document.querySelectorAll('.stat-card[data-nav]').forEach(card => {
+        card.addEventListener('click', function () {
+            navigateToSection(this.getAttribute('data-nav'), this.getAttribute('data-filter') || null);
         });
     });
 </script>
