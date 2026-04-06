@@ -1,9 +1,10 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*" %>
+<%@ page import="com.smartcampus.model.*,java.util.*,java.time.format.DateTimeFormatter" %>
 <%
     request.setAttribute("activePage", "dashboard");
     User currentUser = (User) session.getAttribute("loggedInUser");
     String ctx = request.getContextPath();
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     @SuppressWarnings("unchecked")
     List<CleaningTask> allTasks = (List<CleaningTask>) request.getAttribute("allTasks");
@@ -380,7 +381,7 @@
                   </td>
                   <td style="max-width:220px;"><small><%= r.getReason() %></small></td>
                   <td style="max-width:160px;"><small><%= r.getNotes() != null && !r.getNotes().isEmpty() ? r.getNotes() : "—" %></small></td>
-                  <td><small><%= r.getReportedAt() != null ? r.getReportedAt().toString().replace("T", " ").substring(0, 16) : "—" %></small></td>
+                  <td><small><%= r.getReportedAt() != null ? dtf.format(r.getReportedAt()) : "—" %></small></td>
                 </tr>
                 <% } %>
               </tbody>
