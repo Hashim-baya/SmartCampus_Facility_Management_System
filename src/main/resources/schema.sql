@@ -127,3 +127,17 @@ INSERT IGNORE INTO facilities (id, name, location, facility_type, capacity, stat
 INSERT IGNORE INTO cleaning_tasks (id, facility_id, assigned_to, scheduled_date, status, notes) VALUES
 (1, 1, 3, CURDATE(), 'pending', 'Regular morning cleaning of A101'),
 (2, 3, 3, CURDATE(), 'in_progress', 'Deep clean B101 office');
+
+-- ─────────────────────────────────────────────────────────────
+-- Janitor reports – filed by lecturers regarding cleaning quality
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS janitor_reports (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    lecturer_id     INT           NOT NULL,
+    task_name       VARCHAR(200)  NOT NULL,
+    rating          TINYINT       NOT NULL DEFAULT 3,   -- 1 (poor) to 5 (excellent)
+    reason          TEXT          NOT NULL,
+    notes           TEXT,
+    reported_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_jr_lecturer FOREIGN KEY (lecturer_id) REFERENCES users(id)
+) ENGINE=InnoDB;

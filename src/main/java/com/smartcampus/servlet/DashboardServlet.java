@@ -1,6 +1,7 @@
 package com.smartcampus.servlet;
 
 import com.smartcampus.dao.FacilityDAO;
+import com.smartcampus.dao.JanitorReportDAO;
 import com.smartcampus.dao.UserDAO;
 import com.smartcampus.dao.CleaningTaskDAO;
 import com.smartcampus.model.CleaningTask;
@@ -27,6 +28,7 @@ public class DashboardServlet extends HttpServlet {
     private final UserDAO                userDAO   = new UserDAO();
     private final FacilityDAO            facDAO    = new FacilityDAO();
     private final CleaningTaskDAO        ctDAO     = new CleaningTaskDAO();
+    private final JanitorReportDAO       reportDAO = new JanitorReportDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -63,8 +65,9 @@ public class DashboardServlet extends HttpServlet {
                     jspPath = "/WEB-INF/views/janitor/dashboard.jsp";
                     break;
                 case supervisor:
-                    req.setAttribute("allTasks",      ctDAO.findAll());
-                    req.setAttribute("janitors",      userDAO.findByRole(User.Role.janitor));
+                    req.setAttribute("allTasks",        ctDAO.findAll());
+                    req.setAttribute("janitors",        userDAO.findByRole(User.Role.janitor));
+                    req.setAttribute("lecturerReports", reportDAO.findAll());
                     jspPath = "/WEB-INF/views/supervisor/dashboard.jsp";
                     break;
                 default:

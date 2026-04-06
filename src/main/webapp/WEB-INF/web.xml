@@ -110,6 +110,16 @@
         <url-pattern>/admin/users</url-pattern>
     </servlet-mapping>
 
+    <!-- Lecturer – Report Submission -->
+    <servlet>
+        <servlet-name>LecturerReportServlet</servlet-name>
+        <servlet-class>com.smartcampus.servlet.LecturerReportServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>LecturerReportServlet</servlet-name>
+        <url-pattern>/lecturer/report</url-pattern>
+    </servlet-mapping>
+
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Welcome / default page                                  -->
     <!-- ═══════════════════════════════════════════════════════ -->
