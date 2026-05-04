@@ -1,15 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*" %>
-<%
-    request.setAttribute("activePage", "users");
-    String ctx = request.getContextPath();
-    String success  = request.getParameter("success");
-    String errorMsg = (String) request.getAttribute("error");
-
-    @SuppressWarnings("unchecked")
-    List<User> users = (List<User>) request.getAttribute("users");
-    if (users == null) users = Collections.emptyList();
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="activePage" value="users" scope="request" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,19 +46,19 @@
         </button>
       </div>
 
-      <% if (success != null) { %>
+      <c:if test="${not empty param.success}">
       <div class="alert alert-success alert-dismissible fade show">
         <i class="bi bi-check-circle-fill me-2"></i>
         Operation completed successfully.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
-      <% if (errorMsg != null) { %>
+      </c:if>
+      <c:if test="${not empty requestScope.error}">
       <div class="alert alert-danger alert-dismissible fade show">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><%= errorMsg %>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><c:out value="${requestScope.error}" />
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
+      </c:if>
 
       <div class="table-container">
         <div class="table-responsive">
@@ -78,46 +70,58 @@
               </tr>
             </thead>
             <tbody>
-              <% for (User u : users) { %>
-              <tr>
-                <td class="text-muted small"><%= u.getId() %></td>
-                <td class="fw-medium"><%= u.getName() %></td>
-                <td class="text-muted small"><%= u.getEmail() %></td>
-                <td><span class="badge bg-<%= "admin".equals(u.getRole().name()) ? "danger" : "success" %> text-capitalize"><%= u.getRole().name() %></span></td>
-                <td><%= u.getDepartment() != null ? u.getDepartment() : "" %></td>
-                <td>
-                  <% if (u.isActive()) { %>
-                  <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
-                  <% } else { %>
-                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inactive</span>
-                  <% } %>
-                </td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1"
-                          data-user-id="<%= u.getId() %>"
-                          data-user-name="<%= u.getName() != null ? u.getName().replace("\"","&quot;") : "" %>"
-                          data-user-role="<%= u.getRole().name() %>"
-                          data-user-phone="<%= u.getPhone() != null ? u.getPhone().replace("\"","&quot;") : "" %>"
-                          data-user-dept="<%= u.getDepartment() != null ? u.getDepartment().replace("\"","&quot;") : "" %>"
-                          onclick="openEditModal(this.dataset.userId, this.dataset.userName, this.dataset.userRole, this.dataset.userPhone, this.dataset.userDept)">
-                    <i class="bi bi-pencil-fill"></i>
-                  </button>
-                  <% if (u.isActive()) { %>
-                  <form method="post" action="<%= ctx %>/admin/users" class="d-inline"
-                        onsubmit="return confirm('Deactivate this user?')">
-                    <input type="hidden" name="action" value="deactivate">
-                    <input type="hidden" name="id" value="<%= u.getId() %>">
-                    <button class="btn btn-sm btn-outline-warning">
-                      <i class="bi bi-person-x-fill"></i>
-                    </button>
-                  </form>
-                  <% } %>
-                </td>
-              </tr>
-              <% } %>
-              <% if (users.isEmpty()) { %>
-              <tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr>
-              <% } %>
+              <c:choose>
+                <c:when test="${empty users}">
+                  <tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr>
+                </c:when>
+                <c:otherwise>
+                  <c:forEach var="u" items="${users}">
+                  <tr>
+                    <td class="text-muted small"><c:out value="${u.id}" /></td>
+                    <td class="fw-medium"><c:out value="${u.name}" /></td>
+                    <td class="text-muted small"><c:out value="${u.email}" /></td>
+                    <td>
+                      <c:choose>
+                        <c:when test="${u.role.name() eq 'admin'}"><span class="badge bg-danger text-capitalize"><c:out value="${u.role.name()}" /></span></c:when>
+                        <c:otherwise><span class="badge bg-success text-capitalize"><c:out value="${u.role.name()}" /></span></c:otherwise>
+                      </c:choose>
+                    </td>
+                    <td><c:out value="${empty u.department ? '' : u.department}" /></td>
+                    <td>
+                      <c:choose>
+                        <c:when test="${u.active}">
+                          <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                        </c:when>
+                        <c:otherwise>
+                          <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inactive</span>
+                        </c:otherwise>
+                      </c:choose>
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary me-1"
+                              data-user-id="${u.id}"
+                              data-user-name="${u.name}"
+                              data-user-role="${u.role.name()}"
+                              data-user-phone="${u.phone}"
+                              data-user-dept="${u.department}"
+                              onclick="openEditModal(this.dataset.userId, this.dataset.userName, this.dataset.userRole, this.dataset.userPhone, this.dataset.userDept)">
+                        <i class="bi bi-pencil-fill"></i>
+                      </button>
+                      <c:if test="${u.active}">
+                      <form method="post" action="${ctx}/admin/users" class="d-inline"
+                            onsubmit="return confirm('Deactivate this user?')">
+                        <input type="hidden" name="action" value="deactivate">
+                        <input type="hidden" name="id" value="${u.id}">
+                        <button class="btn btn-sm btn-outline-warning">
+                          <i class="bi bi-person-x-fill"></i>
+                        </button>
+                      </form>
+                      </c:if>
+                    </td>
+                  </tr>
+                  </c:forEach>
+                </c:otherwise>
+              </c:choose>
             </tbody>
           </table>
         </div>
@@ -130,7 +134,7 @@
 <div class="modal fade" id="addUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/admin/users">
+      <form method="post" action="${ctx}/admin/users">
         <input type="hidden" name="action" value="create">
         <div class="modal-header">
           <h5 class="modal-title fw-semibold">Add New User</h5>
@@ -181,7 +185,7 @@
 <div class="modal fade" id="editUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/admin/users">
+      <form method="post" action="${ctx}/admin/users">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="id" id="editUserId">
         <div class="modal-header">

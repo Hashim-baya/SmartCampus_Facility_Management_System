@@ -1,42 +1,30 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*,java.time.*" %>
-<%
-    request.setAttribute("activePage", "dashboard");
-    User currentUser = (User) session.getAttribute("loggedInUser");
-    String ctx = request.getContextPath();
-    String firstName = (currentUser.getName() != null && !currentUser.getName().isEmpty())
-                       ? currentUser.getName().split(" ")[0] : "Lecturer";
-
-    Facility assignedOffice = (Facility) request.getAttribute("assignedOffice");
-    Boolean checkedInAttr   = (Boolean) request.getAttribute("checkedInToday");
-    boolean checkedInToday  = Boolean.TRUE.equals(checkedInAttr);
-    Boolean workingDayAttr  = (Boolean) request.getAttribute("workingDay");
-    boolean workingDay      = workingDayAttr == null || Boolean.TRUE.equals(workingDayAttr);
-    String calendarNotice    = (String) request.getAttribute("calendarNotice");
-    @SuppressWarnings("unchecked")
-    List<CleaningTask> officeTasks = (List<CleaningTask>) request.getAttribute("officeTasks");
-    if (officeTasks == null) officeTasks = Collections.emptyList();
-    @SuppressWarnings("unchecked")
-    Map<Integer, List<TaskActivity>> activitiesMap = (Map<Integer, List<TaskActivity>>) request.getAttribute("activitiesMap");
-    if (activitiesMap == null) activitiesMap = Collections.emptyMap();
-
-    String checkinParam = request.getParameter("checkin");
-%>
-  <%!
-    private String escAttr(String value) {
-      if (value == null) return "";
-      return value.replace("&", "&amp;")
-            .replace("\"", "&quot;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;");
-    }
-  %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<c:set var="activePage" value="dashboard" scope="request" />
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<c:set var="firstName">
+  <c:choose>
+    <c:when test="${currentUser.name != null && fn:length(currentUser.name) > 0}">
+      ${fn:substring(currentUser.name, 0, fn:indexOf(currentUser.name, ' ') > 0 ? fn:indexOf(currentUser.name, ' ') : fn:length(currentUser.name))}
+    </c:when>
+    <c:otherwise>Lecturer</c:otherwise>
+  </c:choose>
+</c:set>
+<c:set var="assignedOffice" value="${requestScope.assignedOffice}" />
+<c:set var="checkedInToday" value="${requestScope.checkedInToday == true}" />
+<c:set var="workingDay" value="${requestScope.workingDay == null || requestScope.workingDay == true}" />
+<c:set var="calendarNotice" value="${requestScope.calendarNotice}" />
+<c:set var="officeTasks" value="${requestScope.officeTasks != null ? requestScope.officeTasks : []}" />
+<c:set var="activitiesMap" value="${requestScope.activitiesMap != null ? requestScope.activitiesMap : {}}" />
+<c:set var="checkinParam" value="${param.checkin}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="ctx" content="<%= request.getContextPath() %>">
+    <meta name="ctx" content="${ctx}">
     <title>Lecturer Dashboard | SmartCampus - Egerton University</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -162,11 +150,11 @@
         <!-- Welcome Header -->
         <div class="welcome-header d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1>Welcome, <%= firstName %></h1>
+            <h1>Welcome, ${firstName}</h1>
             <p>Lecturer Dashboard — Your Office</p>
           </div>
           <span class="badge bg-light text-dark p-2 shadow-sm">
-            <i class="bi bi-person-circle"></i> <%= currentUser.getEmail() %>
+            <i class="bi bi-person-circle"></i> ${currentUser.email}
           </span>
         </div>
 
@@ -175,42 +163,43 @@
           <div class="col-md-6">
             <div class="info-card">
               <div class="info-icon"><i class="bi bi-building"></i></div>
-              <h3><%= assignedOffice != null ? assignedOffice.getName() : "—" %></h3>
+              <h3><c:choose><c:when test="${assignedOffice != null}">${assignedOffice.name}</c:when><c:otherwise>—</c:otherwise></c:choose></h3>
               <p>My Assigned Office</p>
             </div>
           </div>
           <div class="col-md-6">
             <div class="info-card">
               <div class="info-icon"><i class="bi bi-droplet"></i></div>
-              <% if (checkedInToday) { %>
-              <span class="intensity-high">High Intensity</span>
-              <% } else { %>
-              <span class="intensity-low">Low Intensity</span>
-              <% } %>
+              <c:choose>
+                <c:when test="${checkedInToday}"><span class="intensity-high">High Intensity</span></c:when>
+                <c:otherwise><span class="intensity-low">Low Intensity</span></c:otherwise>
+              </c:choose>
               <p>Cleaning Intensity</p>
             </div>
           </div>
         </div>
 
-        <% if ("no_office".equals(checkinParam)) { %>
+        <c:if test="${checkinParam == 'no_office'}">
         <div class="alert alert-warning alert-dismissible fade show">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           You have no assigned office. Please contact the administrator.
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <% } else if ("weekend".equals(checkinParam) || "holiday".equals(checkinParam)) { %>
+        </c:if>
+        <c:if test="${checkinParam == 'weekend' || checkinParam == 'holiday'}">
         <div class="alert alert-info alert-dismissible fade show">
           <i class="bi bi-info-circle-fill me-2"></i>
-          <%= calendarNotice != null && !calendarNotice.isEmpty() ? calendarNotice : "Today is not a working day." %>
+          <c:choose><c:when test="${calendarNotice != null && fn:length(calendarNotice) > 0}">${calendarNotice}</c:when><c:otherwise>Today is not a working day.</c:otherwise></c:choose>
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <% } else if ("error".equals(checkinParam)) { %>
+        </c:if>
+        <c:if test="${checkinParam == 'error'}">
         <div class="alert alert-danger alert-dismissible fade show">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           Check-in failed. Please try again.
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <% } %>
+        </c:if>
 
         <!-- Check-in Card -->
         <div class="checkin-card">
@@ -218,32 +207,33 @@
             <div class="col-8">
               <i class="bi bi-check2-circle"></i>
               <h4 class="mt-2">Daily Check-in</h4>
-              <% if (!workingDay) { %>
-              <p><%= calendarNotice != null && !calendarNotice.isEmpty() ? calendarNotice : "Today is not a working day." %></p>
-              <% } else if (checkedInToday) { %>
-              <p>&#x2705; You have checked in today — full cleaning scheduled for your office.</p>
-              <% } else if (assignedOffice == null) { %>
-              <p>No office assigned. Contact admin to assign an office.</p>
-              <% } else { %>
-              <p>&#x2713; Not checked in — only dusting will be performed in your office today.</p>
-              <% } %>
+              <c:choose>
+                <c:when test="${!workingDay}"><p><c:choose><c:when test="${calendarNotice != null && fn:length(calendarNotice) > 0}">${calendarNotice}</c:when><c:otherwise>Today is not a working day.</c:otherwise></c:choose></p></c:when>
+                <c:when test="${checkedInToday}"><p>&#x2705; You have checked in today — full cleaning scheduled for your office.</p></c:when>
+                <c:when test="${assignedOffice == null}"><p>No office assigned. Contact admin to assign an office.</p></c:when>
+                <c:otherwise><p>&#x2713; Not checked in — only dusting will be performed in your office today.</p></c:otherwise>
+              </c:choose>
             </div>
             <div class="col-4 text-end">
-              <% if (workingDay && !checkedInToday && assignedOffice != null) { %>
-              <form method="post" action="<%= ctx %>/lecturer/checkin" style="display:inline;">
+              <c:choose>
+                <c:when test="${workingDay && !checkedInToday && assignedOffice != null}">
+              <form method="post" action="${ctx}/lecturer/checkin" style="display:inline;">
                 <button type="submit" class="btn-checkin">
                   <i class="bi bi-calendar-check"></i> Check In
                 </button>
               </form>
-              <% } else if (checkedInToday) { %>
+                </c:when>
+                <c:when test="${checkedInToday}">
               <button class="btn-checkin" disabled>
                 <i class="bi bi-check-circle"></i> Checked In
               </button>
-              <% } else if (!workingDay) { %>
+                </c:when>
+                <c:when test="${!workingDay}">
               <button class="btn-checkin" disabled>
                 <i class="bi bi-calendar-x"></i> Closed Today
               </button>
-              <% } %>
+                </c:when>
+              </c:choose>
             </div>
           </div>
         </div>
@@ -255,62 +245,64 @@
               <h5 class="mb-1"><i class="bi bi-brush text-success"></i> Today's Cleaning Tasks</h5>
               <p class="text-muted small mb-0">Uncheck a completed item to notify the supervisor.</p>
             </div>
-            <% if (!workingDay) { %>
+            <c:choose>
+              <c:when test="${not workingDay}">
             <span class="intensity-low">Closed Today</span>
-            <% } else if (checkedInToday) { %>
+              </c:when>
+              <c:when test="${checkedInToday}">
             <span class="intensity-high">High Intensity (All Activities)</span>
-            <% } else { %>
+              </c:when>
+              <c:otherwise>
             <span class="intensity-low">Low Intensity (Dusting Only)</span>
-            <% } %>
+              </c:otherwise>
+            </c:choose>
           </div>
-          <% if (assignedOffice == null) { %>
+          <c:choose>
+          <c:when test="${assignedOffice == null}">
           <p class="text-center text-muted py-4">No office assigned. Contact admin.</p>
-          <% } else if (!workingDay) { %>
+          </c:when>
+          <c:when test="${not workingDay}">
           <p class="text-muted small mb-2">
             <i class="bi bi-info-circle text-warning"></i>
-            <%= calendarNotice != null && !calendarNotice.isEmpty() ? calendarNotice : "Today is not a working day." %>
+            <c:out value="${calendarNotice != null && fn:length(calendarNotice) > 0 ? calendarNotice : 'Today is not a working day.'}" />
             Cleaning will resume on the next working day.
           </p>
           <div class="alert alert-light border text-muted mb-0">
             Office access is closed today, so no check-in or cleaning activity is scheduled.
           </div>
-          <% } else if (officeTasks == null || officeTasks.isEmpty()) { %>
+          </c:when>
+          <c:when test="${officeTasks == null || fn:length(officeTasks) == 0}">
           <div class="alert alert-light border text-muted mb-0">
-            No cleaning task has been scheduled yet for <strong><%= assignedOffice.getName() %></strong>.
+            No cleaning task has been scheduled yet for <strong><c:out value="${assignedOffice.name}" /></strong>.
           </div>
-          <% } else { %>
+          </c:when>
+          <c:otherwise>
           <p class="text-muted small mb-2">
             <i class="bi bi-info-circle text-success"></i>
-            <% if (checkedInToday) { %>
-            You have checked in. Full cleaning has been scheduled for <strong><%= assignedOffice.getName() %></strong>.
-            <% } else { %>
-            You have not checked in. Only dusting is scheduled for <strong><%= assignedOffice.getName() %></strong> today.
-            <% } %>
+            <c:choose>
+              <c:when test="${checkedInToday}">
+            You have checked in. Full cleaning has been scheduled for <strong><c:out value="${assignedOffice.name}" /></strong>.
+              </c:when>
+              <c:otherwise>
+            You have not checked in. Only dusting is scheduled for <strong><c:out value="${assignedOffice.name}" /></strong> today.
+              </c:otherwise>
+            </c:choose>
           </p>
 
-          <% for (CleaningTask task : officeTasks) {
-               List<TaskActivity> activities = activitiesMap.getOrDefault(task.getId(), Collections.emptyList());
-               boolean deadlinePassed = task.getScheduledDate() != null
-                       && task.getScheduledDate().isEqual(LocalDate.now())
-                       && LocalTime.now().isAfter(LocalTime.of(8, 0))
-                       && task.getStatus() != CleaningTask.Status.completed;
-               String taskLabel = (assignedOffice.getName() != null && !assignedOffice.getName().isEmpty())
-                                  ? assignedOffice.getName() : ("Task #" + task.getId());
-          %>
-          <div class="task-review-card mb-3" data-task-id="<%= task.getId() %>">
+          <c:forEach var="task" items="${officeTasks}">
+          <c:set var="activities" value="${activitiesMap[task.id] != null ? activitiesMap[task.id] : []}" />
+          <c:set var="taskLabel" value="${assignedOffice.name != null && fn:length(assignedOffice.name) > 0 ? assignedOffice.name : 'Task #'.concat(task.id)}" />
+          <div class="task-review-card mb-3" data-task-id="${task.id}">
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
               <div>
-                <strong><%= taskLabel %></strong>
-                <div class="task-status">Scheduled for <%= task.getScheduledDate() %></div>
+                <strong><c:out value="${taskLabel}" /></strong>
+                <div class="task-status">Scheduled for <c:out value="${task.scheduledDate}" /></div>
               </div>
               <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                <% if (deadlinePassed) { %>
-                <span class="deadline-badge">Past 8:00 AM deadline</span>
-                <% } %>
                 <button type="button"
                         class="btn btn-outline-danger btn-sm report-btn"
-                        data-task-id="<%= task.getId() %>"
-                        data-task-name="<%= escAttr(taskLabel) %>"
+                        data-task-id="${task.id}"
+                        data-task-name="${taskLabel}"
                         onclick="openReportPanel(this)">
                   <i class="bi bi-flag me-1"></i> Report
                 </button>
@@ -318,78 +310,78 @@
             </div>
 
             <div class="activity-list">
-              <% for (TaskActivity act : activities) {
-                   boolean done = act.isDone();
-              %>
-              <div class="task-item<%= done ? " done" : "" %>">
+              <c:forEach var="act" items="${activities}">
+              <div class="task-item${act.done ? ' done' : ''}">
                 <input type="checkbox"
                        class="task-checkbox"
-                       <%= done ? "checked" : "" %>
-                       <%= done ? "" : "disabled" %>
-                       data-task-id="<%= task.getId() %>"
-                       data-task-name="<%= escAttr(taskLabel) %>"
-                       data-activity-name="<%= escAttr(act.getActivity()) %>"
+                       <c:if test="${act.done}">checked</c:if>
+                       <c:if test="${not act.done}">disabled</c:if>
+                       data-task-id="${task.id}"
+                       data-task-name="${taskLabel}"
+                       data-activity-name="${act.activity}"
                        onchange="handleActivityToggle(this)">
                 <div class="task-content">
-                  <p class="task-title"><%= act.getActivity() %></p>
+                  <p class="task-title"><c:out value="${act.activity}" /></p>
                   <div class="task-status">
-                    <%= done ? "Completed by janitor" : "Awaiting janitor" %>
+                    <c:out value="${act.done ? 'Completed by janitor' : 'Awaiting janitor'}" />
                   </div>
                 </div>
-                <% if (done) { %>
+                <c:if test="${act.done}">
                 <button type="button"
                         class="report-btn"
-                        data-task-id="<%= task.getId() %>"
-                        data-task-name="<%= escAttr(taskLabel) %>"
-                        data-activity-name="<%= escAttr(act.getActivity()) %>"
+                        data-task-id="${task.id}"
+                        data-task-name="${taskLabel}"
+                        data-activity-name="${act.activity}"
                         onclick="openReportPanel(this)">
                   Report
                 </button>
-                <% } else { %>
+                </c:if>
+                <c:if test="${not act.done}">
                 <span class="activity-status-note">Locked until janitor completes it</span>
-                <% } %>
+                </c:if>
               </div>
-              <% } %>
+              </c:forEach>
             </div>
 
-            <div class="review-panel mt-3 d-none" id="reportPanel-<%= task.getId() %>">
+            <div class="review-panel mt-3 d-none" id="reportPanel-${task.id}">
               <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
                 <div>
                   <strong class="small">Supervisor report</strong>
-                  <div class="activity-status-note" id="reportTarget-<%= task.getId() %>">Select a completed item to report dissatisfaction.</div>
+                  <div class="activity-status-note" id="reportTarget-${task.id}">Select a completed item to report dissatisfaction.</div>
                 </div>
                 <span class="review-pill">5-star rating</span>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold small">Cleaning quality rating</label>
-                <div class="d-flex gap-1 align-items-center task-star-group" data-task-id="<%= task.getId() %>">
-                  <% for (int s = 1; s <= 5; s++) { %>
-                  <i class="bi bi-star-fill task-star-icon<%= s == 5 ? " active" : "" %>"
-                     data-value="<%= s %>"
-                     title="<%= s %> star<%= s > 1 ? "s" : "" %>"></i>
-                  <% } %>
-                  <small class="text-muted ms-2" id="ratingLabel-<%= task.getId() %>">Select a rating</small>
+                <div class="d-flex gap-1 align-items-center task-star-group" data-task-id="${task.id}">
+                  <c:forEach var="s" begin="1" end="5">
+                  <i class="bi bi-star-fill task-star-icon${s == 5 ? ' active' : ''}"
+                     data-value="${s}"
+                     title="${s} star${s > 1 ? 's' : ''}"></i>
+                  </c:forEach>
+                  <small class="text-muted ms-2" id="ratingLabel-${task.id}">Select a rating</small>
                 </div>
-                <input type="hidden" id="reportRating-<%= task.getId() %>" value="5">
+                <input type="hidden" id="reportRating-${task.id}" value="5">
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold small">Reason for dissatisfaction</label>
-                <textarea class="form-control" id="reportReason-<%= task.getId() %>" rows="3"
+                <textarea class="form-control" id="reportReason-${task.id}" rows="3"
                           placeholder="Explain what was not completed properly..." required></textarea>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-semibold small">Additional notes</label>
-                <input type="text" class="form-control" id="reportNotes-<%= task.getId() %>" placeholder="Optional details for the supervisor">
+                <input type="text" class="form-control" id="reportNotes-${task.id}" placeholder="Optional details for the supervisor">
               </div>
               <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeReportPanel(<%= task.getId() %>)">Cancel</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="submitTaskReport(<%= task.getId() %>)">Send Report</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeReportPanel(${task.id})">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="submitTaskReport(${task.id})">Send Report</button>
               </div>
             </div>
           </div>
-          <% } %>
+          </c:forEach>
         </div>
-        <% } %>
+        </c:otherwise>
+        </c:choose>
       </div>
 
       <!-- Reports Section -->

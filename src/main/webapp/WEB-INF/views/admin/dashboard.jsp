@@ -1,23 +1,15 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*" %>
-<%
-    request.setAttribute("activePage", "dashboard");
-    User currentUser    = (User) session.getAttribute("loggedInUser");
-    int totalUsers      = (int) request.getAttribute("totalUsers");
-    int totalFacils     = (int) request.getAttribute("totalFacilities");
-    int pendingReqs     = (int) request.getAttribute("pendingRequests");
-    int completedToday  = request.getAttribute("completedToday") != null ? (int) request.getAttribute("completedToday") : 0;
-    String ctx          = request.getContextPath();
-    String errorMsg     = (String) request.getAttribute("error");
-
-    @SuppressWarnings("unchecked")
-    List<Facility> allFacilities = (List<Facility>) request.getAttribute("allFacilities");
-    if (allFacilities == null) allFacilities = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<User> allUsers = (List<User>) request.getAttribute("allUsers");
-    if (allUsers == null) allUsers = Collections.emptyList();
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="activePage" value="dashboard" scope="request" />
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="totalFacils" value="${requestScope.totalFacilities}" />
+<c:set var="totalUsers" value="${requestScope.totalUsers}" />
+<c:set var="pendingReqs" value="${requestScope.pendingRequests}" />
+<c:set var="completedToday" value="${requestScope.completedToday != null ? requestScope.completedToday : 0}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<c:set var="errorMsg" value="${requestScope.error}" />
+<c:set var="allFacilities" value="${requestScope.allFacilities != null ? requestScope.allFacilities : []}" />
+<c:set var="allUsers" value="${requestScope.allUsers != null ? requestScope.allUsers : []}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -159,46 +151,46 @@
           <p>Science Complex Management Overview</p>
         </div>
         <span class="badge bg-light text-dark p-2 shadow-sm">
-          <i class="bi bi-person-circle"></i> <%= currentUser.getName() %>
+          <i class="bi bi-person-circle"></i> <c:out value="${currentUser.name}" />
           <span class="badge bg-success ms-1">admin</span>
         </span>
       </div>
 
-      <% if (errorMsg != null) { %>
+      <c:if test="${not empty errorMsg}">
       <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><%= errorMsg %>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><c:out value="${errorMsg}" />
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <span id="serverErrorMsg" data-msg="<%= errorMsg.replace("&","&amp;").replace("\"","&quot;") %>" class="d-none"></span>
-      <% } %>
+      <span id="serverErrorMsg" data-msg="${errorMsg}" class="d-none"></span>
+      </c:if>
 
       <!-- Stats Cards -->
       <div class="row mb-4">
         <div class="col-md-3 col-sm-6">
           <div class="stat-card">
             <div class="stat-icon"><i class="bi bi-door-closed"></i></div>
-            <h3><%= totalFacils %></h3>
+            <h3><c:out value="${totalFacils}" /></h3>
             <p>Total Offices</p>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="stat-card">
             <div class="stat-icon"><i class="bi bi-people"></i></div>
-            <h3><%= totalUsers %></h3>
+            <h3><c:out value="${totalUsers}" /></h3>
             <p>Total Users</p>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="stat-card">
             <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
-            <h3><%= completedToday %></h3>
+            <h3><c:out value="${completedToday}" /></h3>
             <p>Completed Today</p>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="stat-card">
             <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-            <h3><%= pendingReqs %></h3>
+            <h3><c:out value="${pendingReqs}" /></h3>
             <p>Pending Tasks</p>
           </div>
         </div>
@@ -231,38 +223,42 @@
                 </tr>
               </thead>
               <tbody>
-                <% if (allFacilities.isEmpty()) { %>
+                <c:choose>
+                  <c:when test="${empty allFacilities}">
                 <tr><td colspan="6" class="text-center text-muted py-4">No offices found.</td></tr>
-                <% } else {
-                   for (Facility f : allFacilities) { %>
+                  </c:when>
+                  <c:otherwise>
+                    <c:forEach var="f" items="${allFacilities}">
                 <tr>
-                  <td><strong><%= f.getName() %></strong></td>
-                  <td><span class="badge bg-secondary bg-opacity-10 text-dark"><%= f.getLocation() %></span></td>
-                  <td><span class="badge-lecturer text-capitalize"><%= f.getFacilityType() != null ? f.getFacilityType().name() : "—" %></span></td>
-                  <td><%= f.getCapacity() > 0 ? f.getCapacity() : "—" %></td>
-                  <td><span class="badge rounded-pill badge-status-<%= f.getStatus().name() %> text-capitalize px-3"><%= f.getStatus().name() %></span></td>
+                  <td><strong><c:out value="${f.name}" /></strong></td>
+                  <td><span class="badge bg-secondary bg-opacity-10 text-dark"><c:out value="${f.location}" /></span></td>
+                  <td><span class="badge-lecturer text-capitalize"><c:out value="${f.facilityType != null ? f.facilityType.name() : '—'}" /></span></td>
+                  <td><c:out value="${f.capacity > 0 ? f.capacity : '—'}" /></td>
+                  <td><span class="badge rounded-pill badge-status-${f.status.name()} text-capitalize px-3"><c:out value="${f.status.name()}" /></span></td>
                   <td>
                     <button class="btn btn-sm btn-outline-success me-1" style="border-radius:20px;"
-                            data-fac-id="<%= f.getId() %>"
-                            data-fac-name="<%= f.getName().replace("&","&amp;").replace("\"","&quot;") %>"
-                            data-fac-loc="<%= f.getLocation().replace("&","&amp;").replace("\"","&quot;") %>"
-                            data-fac-cap="<%= f.getCapacity() %>"
-                            data-fac-status="<%= f.getStatus().name() %>"
-                            data-fac-desc="<%= f.getDescription() != null ? f.getDescription().replace("&","&amp;").replace("\"","&quot;") : "" %>"
+                            data-fac-id="${f.id}"
+                            data-fac-name="${f.name}"
+                            data-fac-loc="${f.location}"
+                            data-fac-cap="${f.capacity}"
+                            data-fac-status="${f.status.name()}"
+                            data-fac-desc="${f.description != null ? f.description : ''}"
                             onclick="openEditFacility(this)">
                       <i class="bi bi-pencil-square"></i>
                     </button>
-                    <form method="post" action="<%= ctx %>/facilities" class="d-inline"
+                    <form method="post" action="${ctx}/facilities" class="d-inline"
                           onsubmit="return confirm('Delete this office? This cannot be undone.')">
                       <input type="hidden" name="action" value="delete">
-                      <input type="hidden" name="id" value="<%= f.getId() %>">
+                      <input type="hidden" name="id" value="${f.id}">
                       <button class="btn btn-sm btn-outline-danger" style="border-radius:20px;">
                         <i class="bi bi-trash3"></i>
                       </button>
                     </form>
                   </td>
                 </tr>
-                <% } } %>
+                    </c:forEach>
+                  </c:otherwise>
+                </c:choose>
               </tbody>
             </table>
           </div>
@@ -274,7 +270,7 @@
         <div class="table-container">
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h5><i class="bi bi-people text-success"></i> Users Management</h5>
-            <a href="<%= ctx %>/admin/users" class="btn-add text-decoration-none">
+            <a href="${ctx}/admin/users" class="btn-add text-decoration-none">
               <i class="bi bi-person-plus-fill"></i> Manage Users
             </a>
           </div>
@@ -284,23 +280,31 @@
                 <tr><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Staff ID</th><th>Registered</th></tr>
               </thead>
               <tbody>
-                <% if (allUsers.isEmpty()) { %>
+                <c:choose>
+                  <c:when test="${empty allUsers}">
                 <tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>
-                <% } else {
-                   for (User u : allUsers) {
-                       String roleClass = "admin".equals(u.getRole().name()) ? "badge-admin"
-                                        : "lecturer".equals(u.getRole().name()) ? "badge-lecturer"
-                                        : "janitor".equals(u.getRole().name()) ? "badge-janitor"
-                                        : "badge-supervisor"; %>
+                  </c:when>
+                  <c:otherwise>
+                    <c:forEach var="u" items="${allUsers}">
+                      <c:set var="roleClass">
+                        <c:choose>
+                          <c:when test="${u.role.name() eq 'admin'}">badge-admin</c:when>
+                          <c:when test="${u.role.name() eq 'lecturer'}">badge-lecturer</c:when>
+                          <c:when test="${u.role.name() eq 'janitor'}">badge-janitor</c:when>
+                          <c:otherwise>badge-supervisor</c:otherwise>
+                        </c:choose>
+                      </c:set>
                 <tr>
-                  <td><strong><%= u.getName() %></strong></td>
-                  <td><%= u.getEmail() %></td>
-                  <td><span class="<%= roleClass %> text-capitalize"><%= u.getRole().name() %></span></td>
-                  <td><%= u.getPhone() != null ? u.getPhone() : "—" %></td>
-                  <td><small class="text-muted"><%= u.getStaffId() != null ? u.getStaffId() : "—" %></small></td>
-                  <td><small><%= u.getCreatedAt() != null ? u.getCreatedAt().toLocalDate() : "—" %></small></td>
+                  <td><strong><c:out value="${u.name}" /></strong></td>
+                  <td><c:out value="${u.email}" /></td>
+                  <td><span class="${roleClass} text-capitalize"><c:out value="${u.role.name()}" /></span></td>
+                  <td><c:out value="${u.phone != null ? u.phone : '—'}" /></td>
+                  <td><small class="text-muted"><c:out value="${u.staffId != null ? u.staffId : '—'}" /></small></td>
+                  <td><small><c:out value="${u.createdAt != null ? u.createdAt.toLocalDate() : '—'}" /></small></td>
                 </tr>
-                <% } } %>
+                    </c:forEach>
+                  </c:otherwise>
+                </c:choose>
               </tbody>
             </table>
           </div>
@@ -315,7 +319,7 @@
 <div class="modal fade modal-custom" id="addFacilityModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/facilities">
+      <form method="post" action="${ctx}/facilities">
         <input type="hidden" name="action" value="create">
         <input type="hidden" name="facilityType" value="office">
         <div class="modal-header">
@@ -369,7 +373,7 @@
 <div class="modal fade modal-custom" id="editFacilityModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/facilities">
+      <form method="post" action="${ctx}/facilities">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="id" id="editFacId">
         <input type="hidden" name="facilityType" value="office">
@@ -460,12 +464,12 @@
         toast.onclick = () => { toast.style.animation = 'slideOut 0.3s ease'; setTimeout(() => toast.remove(), 300); };
     }
 
-    <% if (request.getParameter("success") != null) { %>
+    <c:if test="${not empty param.success}">
     showToast('Operation completed successfully!', 'success');
-    <% } %>
-    <% if (errorMsg != null) { %>
-    showToast(document.getElementById('serverErrorMsg').dataset.msg, 'error');
-    <% } %>
+    </c:if>
+    <c:if test="${not empty errorMsg}">
+    showToast('${errorMsg}', 'error');
+    </c:if>
 </script>
 </body>
 </html>

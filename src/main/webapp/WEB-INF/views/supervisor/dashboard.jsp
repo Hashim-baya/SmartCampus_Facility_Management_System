@@ -1,49 +1,34 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*,java.time.*,java.time.format.DateTimeFormatter" %>
-<%
-    request.setAttribute("activePage", "dashboard");
-    User currentUser = (User) session.getAttribute("loggedInUser");
-    String ctx = request.getContextPath();
-    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<c:set var="activePage" value="dashboard" scope="request" />
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<c:set var="allTasks" value="${requestScope.allTasks != null ? requestScope.allTasks : []}" />
+<c:set var="janitors" value="${requestScope.janitors != null ? requestScope.janitors : []}" />
+<c:set var="facilities" value="${requestScope.facilities != null ? requestScope.facilities : []}" />
+<c:set var="lecturerReports" value="${requestScope.lecturerReports != null ? requestScope.lecturerReports : []}" />
+<c:set var="deadlineBreachedMap" value="${requestScope.deadlineBreachedMap != null ? requestScope.deadlineBreachedMap : {}}" />
+<c:set var="janitorTotalMap" value="${requestScope.janitorTotalMap != null ? requestScope.janitorTotalMap : {}}" />
+<c:set var="janitorCompletedMap" value="${requestScope.janitorCompletedMap != null ? requestScope.janitorCompletedMap : {}}" />
+<c:set var="janitorPctMap" value="${requestScope.janitorPctMap != null ? requestScope.janitorPctMap : {}}" />
+<c:set var="janitorInitialMap" value="${requestScope.janitorInitialMap != null ? requestScope.janitorInitialMap : {}}" />
+<c:set var="reportReportedAtMap" value="${requestScope.reportReportedAtMap != null ? requestScope.reportReportedAtMap : {}}" />
+<c:set var="success" value="${param.success}" />
+<c:set var="errorMsg" value="${requestScope.error}" />
 
-    @SuppressWarnings("unchecked")
-    List<CleaningTask> allTasks = (List<CleaningTask>) request.getAttribute("allTasks");
-    if (allTasks == null) allTasks = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<User> janitors = (List<User>) request.getAttribute("janitors");
-    if (janitors == null) janitors = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
-    if (facilities == null) facilities = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<JanitorReport> lecturerReports = (List<JanitorReport>) request.getAttribute("lecturerReports");
-    if (lecturerReports == null) lecturerReports = Collections.emptyList();
-
-    String success  = request.getParameter("success");
-    String errorMsg = (String) request.getAttribute("error");
-
-    long pendingCount = 0, inProgressCount = 0, completedCount = 0;
-    long overdueCount = 0;
-    LocalDate today = LocalDate.now();
-    boolean afterDeadline = LocalTime.now().isAfter(LocalTime.of(8, 0));
-    for (CleaningTask t : allTasks) {
-        switch (t.getStatus()) {
-            case pending:     pendingCount++;     break;
-            case in_progress: inProgressCount++;  break;
-            case completed:   completedCount++;   break;
-            default: break;
-        }
-      if (afterDeadline && t.getScheduledDate() != null
-              && !t.getScheduledDate().isAfter(today)
-              && t.getStatus() != CleaningTask.Status.completed) {
-          overdueCount++;
-      }
-    }
-    long activeAlerts = inProgressCount + overdueCount;
-%>
+<c:set var="pendingCount" value="0" />
+<c:set var="inProgressCount" value="0" />
+<c:set var="completedCount" value="0" />
+<c:forEach var="t" items="${allTasks}">
+  <c:choose>
+    <c:when test="${t.status.name() eq 'pending'}"><c:set var="pendingCount" value="${pendingCount + 1}" /></c:when>
+    <c:when test="${t.status.name() eq 'in_progress'}"><c:set var="inProgressCount" value="${inProgressCount + 1}" /></c:when>
+    <c:when test="${t.status.name() eq 'completed'}"><c:set var="completedCount" value="${completedCount + 1}" /></c:when>
+  </c:choose>
+</c:forEach>
+<c:set var="overdueCount" value="${requestScope.overdueCount != null ? requestScope.overdueCount : 0}" />
+<c:set var="activeAlerts" value="${inProgressCount + overdueCount}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -190,126 +175,125 @@
             <i class="bi bi-plus-circle-fill me-1"></i> Assign Office
           </button>
           <span class="badge bg-light text-dark p-2 shadow-sm">
-            <i class="bi bi-person-circle"></i> Supervisor &nbsp;|&nbsp; <%= currentUser.getEmail() %>
+            <i class="bi bi-person-circle"></i> Supervisor &nbsp;|&nbsp; ${currentUser.email}
           </span>
         </div>
       </div>
-
-      <% if (success != null) {
-           String successMsg = "assigned".equals(success) ? "Office assigned to janitor successfully."
-                             : "reassigned".equals(success) ? "Task reassigned successfully."
-                             : "Operation completed successfully."; %>
-      <div class="alert alert-success alert-dismissible fade show">
-        <i class="bi bi-check-circle-fill me-2"></i><%= successMsg %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-      <% } %>
-      <% if (errorMsg != null) { %>
-      <div class="alert alert-danger alert-dismissible fade show">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><%= errorMsg %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-      <% } %>
+      
+        <c:if test="${success != null}">
+          <c:set var="successMsg">
+            <c:choose>
+              <c:when test="${success == 'assigned'}">Office assigned to janitor successfully.</c:when>
+              <c:when test="${success == 'reassigned'}">Task reassigned successfully.</c:when>
+              <c:otherwise>Operation completed successfully.</c:otherwise>
+            </c:choose>
+          </c:set>
+          <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle-fill me-2"></i>${successMsg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        </c:if>
+        <c:if test="${errorMsg != null}">
+          <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>${errorMsg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        </c:if>
 
       <!-- Dashboard Section -->
       <div id="dashboardSection">
 
         <!-- Stats Cards -->
         <div class="row mb-4">
-          <div class="col-6 col-md-3 mb-3 mb-md-0">
-            <div class="stat-card" data-nav="monitor" data-filter="completed" title="Click to view completed tasks">
-              <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
-              <h3><%= completedCount %></h3>
-              <p>Completed</p>
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+              <div class="stat-card" data-nav="monitor" data-filter="completed" title="Click to view completed tasks">
+                <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+                <h3>${completedCount}</h3>
+                <p>Completed</p>
+              </div>
             </div>
-          </div>
-          <div class="col-6 col-md-3 mb-3 mb-md-0">
-            <div class="stat-card" data-nav="reports" title="Click to view dispute reports">
-              <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
-              <h3><%= lecturerReports.size() %></h3>
-              <p>Disputed</p>
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+              <div class="stat-card" data-nav="reports" title="Click to view dispute reports">
+                <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                <h3>${fn:length(lecturerReports)}</h3>
+                <p>Disputed</p>
+              </div>
             </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stat-card" data-nav="monitor" data-filter="in_progress" title="Click to view in-progress tasks">
-              <div class="stat-icon"><i class="bi bi-bell"></i></div>
-              <h3><%= activeAlerts %></h3>
-              <p>Active Alerts</p>
+            <div class="col-6 col-md-3">
+              <div class="stat-card" data-nav="monitor" data-filter="in_progress" title="Click to view in-progress tasks">
+                <div class="stat-icon"><i class="bi bi-bell"></i></div>
+                <h3>${activeAlerts}</h3>
+                <p>Active Alerts</p>
+              </div>
             </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stat-card" data-nav="monitor" data-filter="pending" title="Click to view pending tasks">
-              <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-              <h3><%= pendingCount %></h3>
-              <p>Pending</p>
+            <div class="col-6 col-md-3">
+              <div class="stat-card" data-nav="monitor" data-filter="pending" title="Click to view pending tasks">
+                <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                <h3>${pendingCount}</h3>
+                <p>Pending</p>
+              </div>
             </div>
-          </div>
         </div>
 
         <!-- Incomplete Task Alert -->
-        <% if (inProgressCount > 0) { %>
-        <div class="alert-card mb-4">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-clock-history text-danger fs-4"></i>
-            <div>
-              <strong>Incomplete Task Alert</strong><br>
-              <small><%= inProgressCount %> task<%= inProgressCount == 1 ? "" : "s" %> currently in progress</small>
+        <c:if test="${inProgressCount > 0}">
+          <div class="alert-card mb-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-clock-history text-danger fs-4"></i>
+              <div>
+                <strong>Incomplete Task Alert</strong><br>
+                <small>${inProgressCount} task${inProgressCount == 1 ? '' : 's'} currently in progress</small>
+              </div>
             </div>
           </div>
-        </div>
-        <% } %>
+        </c:if>
 
-        <% if (overdueCount > 0) { %>
-        <div class="alert-card mb-4">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-alarm text-danger fs-4"></i>
-            <div>
-              <strong>Deadline Alert</strong><br>
-              <small><%= overdueCount %> task<%= overdueCount == 1 ? "" : "s" %> missed the 8:00 AM cleaning deadline</small>
+        <c:if test="${overdueCount > 0}">
+          <div class="alert-card mb-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-alarm text-danger fs-4"></i>
+              <div>
+                <strong>Deadline Alert</strong><br>
+                <small>${overdueCount} task${overdueCount == 1 ? '' : 's'} missed the 8:00 AM cleaning deadline</small>
+              </div>
             </div>
           </div>
-        </div>
-        <% } %>
+        </c:if>
 
         <!-- Pending Tasks Summary -->
         <div class="table-container">
           <h5><i class="bi bi-list-check text-success"></i> Pending Tasks Summary</h5>
           <p class="text-muted small">Tasks awaiting completion</p>
-          <% boolean hasPending = false;
-             for (CleaningTask t : allTasks) {
-               if (t.getStatus() == CleaningTask.Status.pending || t.getStatus() == CleaningTask.Status.in_progress) {
-                 hasPending = true; break;
-               }
-             }
-             if (!hasPending) { %>
-          <div class="text-center py-4 text-muted">No pending tasks</div>
-          <% } else {
-               for (CleaningTask t : allTasks) {
-                 if (t.getStatus() != CleaningTask.Status.pending && t.getStatus() != CleaningTask.Status.in_progress) continue;
-                 String statusClass = t.getStatus() == CleaningTask.Status.in_progress ? "status-progress" : "status-pending";
-                 String statusText  = t.getStatus() == CleaningTask.Status.in_progress ? "In Progress" : "Pending";
-                boolean deadlineBreached = afterDeadline && t.getScheduledDate() != null
-                        && !t.getScheduledDate().isAfter(today)
-                        && t.getStatus() != CleaningTask.Status.completed;
-          %>
-          <div class="task-item d-flex align-items-center gap-2">
-            <div class="task-content">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <strong><%= t.getFacilityName() %></strong>
-                <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                  <% if (deadlineBreached) { %>
-                  <span class="status-skipped">Past 8:00 AM</span>
-                  <% } %>
-                  <span class="<%= statusClass %>"><%= statusText %></span>
-                </div>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">Scheduled: <%= t.getScheduledDate() %></small>
-                <small class="text-muted">Assigned: <%= t.getAssignedToName() != null ? t.getAssignedToName() : "Unassigned" %></small>
-              </div>
-            </div>
-          </div>
-          <% } } %>
+          <c:choose>
+            <c:when test="${pendingCount + inProgressCount == 0}">
+              <div class="text-center py-4 text-muted">No pending tasks</div>
+            </c:when>
+            <c:otherwise>
+              <c:forEach var="t" items="${allTasks}">
+                <c:if test="${t.status.name() eq 'pending' || t.status.name() eq 'in_progress'}">
+                  <c:set var="statusClass" value="${t.status.name() eq 'in_progress' ? 'status-progress' : 'status-pending'}" />
+                  <c:set var="statusText" value="${t.status.name() eq 'in_progress' ? 'In Progress' : 'Pending'}" />
+                  <div class="task-item d-flex align-items-center gap-2">
+                    <div class="task-content">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong>${t.facilityName}</strong>
+                        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                          <c:if test="${deadlineBreachedMap[t.id]}">
+                            <span class="status-skipped">Past 8:00 AM</span>
+                          </c:if>
+                          <span class="${statusClass}">${statusText}</span>
+                        </div>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Scheduled: ${t.scheduledDate}</small>
+                        <small class="text-muted">Assigned: ${empty t.assignedToName ? 'Unassigned' : t.assignedToName}</small>
+                      </div>
+                    </div>
+                  </div>
+                </c:if>
+              </c:forEach>
+            </c:otherwise>
+          </c:choose>
         </div>
       </div>
 
@@ -328,9 +312,11 @@
               <button class="btn btn-sm btn-outline-secondary" data-status-filter="pending"><i class="bi bi-clock"></i> Pending</button>
             </div>
           </div>
-          <% if (allTasks.isEmpty()) { %>
-          <div class="text-center py-4 text-muted">No tasks found</div>
-          <% } else { %>
+          <c:choose>
+            <c:when test="${empty allTasks}">
+              <div class="text-center py-4 text-muted">No tasks found</div>
+            </c:when>
+            <c:otherwise>
           <div class="table-responsive">
             <table class="table table-custom align-middle">
               <thead>
@@ -343,88 +329,92 @@
                 </tr>
               </thead>
               <tbody id="monitorTableBody">
-                <% for (CleaningTask t : allTasks) {
-                     String sc = "status-pending";
-                     String sl = "Pending";
-                     String ds = "pending";
-                     boolean deadlineBreached = afterDeadline && t.getScheduledDate() != null
-                             && !t.getScheduledDate().isAfter(today)
-                             && t.getStatus() != CleaningTask.Status.completed;
-                     if (t.getStatus() == CleaningTask.Status.completed)   { sc = "status-completed"; sl = "Completed";  ds = "completed"; }
-                     else if (t.getStatus() == CleaningTask.Status.in_progress) { sc = "status-progress";  sl = "In Progress"; ds = "in_progress"; }
-                     else if (t.getStatus() == CleaningTask.Status.skipped) { sc = "status-skipped";   sl = "Skipped";    ds = "skipped"; }
-                %>
-                <tr data-status="<%= ds %>">
-                  <td><strong><%= t.getFacilityName() %></strong></td>
-                  <td>
-                    <div class="d-flex flex-column gap-1">
-                      <% if (deadlineBreached) { %>
-                      <span class="status-skipped">Past 8:00 AM</span>
-                      <% } %>
-                      <span class="<%= sc %>"><%= sl %></span>
-                    </div>
-                  </td>
-                  <td><%= t.getScheduledDate() %></td>
-                  <td><%= t.getAssignedToName() != null ? t.getAssignedToName() : "Unassigned" %></td>
-                  <td>
-                    <button class="btn-reassign"
-                      data-task-id="<%= t.getId() %>"
-                      data-office-name="<%= t.getFacilityName() %>"
-                      data-current-janitor-id="<%= t.getAssignedTo() %>">
-                      <i class="bi bi-arrow-repeat"></i> Reassign
-                    </button>
-                  </td>
-                </tr>
-                <% } %>
+                <c:forEach var="t" items="${allTasks}">
+                  <c:set var="ds" value="${t.status.name()}" />
+                  <c:set var="sc" value="status-pending" />
+                  <c:set var="sl" value="Pending" />
+                  <c:choose>
+                    <c:when test="${ds eq 'completed'}">
+                      <c:set var="sc" value="status-completed" />
+                      <c:set var="sl" value="Completed" />
+                    </c:when>
+                    <c:when test="${ds eq 'in_progress'}">
+                      <c:set var="sc" value="status-progress" />
+                      <c:set var="sl" value="In Progress" />
+                    </c:when>
+                    <c:when test="${ds eq 'skipped'}">
+                      <c:set var="sc" value="status-skipped" />
+                      <c:set var="sl" value="Skipped" />
+                    </c:when>
+                  </c:choose>
+
+                  <tr data-status="${ds}">
+                    <td><strong>${t.facilityName}</strong></td>
+                    <td>
+                      <div class="d-flex flex-column gap-1">
+                        <c:if test="${deadlineBreachedMap[t.id]}">
+                          <span class="status-skipped">Past 8:00 AM</span>
+                        </c:if>
+                        <span class="${sc}">${sl}</span>
+                      </div>
+                    </td>
+                    <td>${t.scheduledDate}</td>
+                    <td>${empty t.assignedToName ? 'Unassigned' : t.assignedToName}</td>
+                    <td>
+                      <button class="btn-reassign"
+                        data-task-id="${t.id}"
+                        data-office-name="${t.facilityName}"
+                        data-current-janitor-id="${t.assignedTo}">
+                        <i class="bi bi-arrow-repeat"></i> Reassign
+                      </button>
+                    </td>
+                  </tr>
+                </c:forEach>
               </tbody>
             </table>
           </div>
           <div id="monitorNoResults" class="text-center py-3 text-muted d-none">No tasks match the selected filter.</div>
-          <% } %>
+            </c:otherwise>
+          </c:choose>
         </div>
       </div>
 
       <!-- Janitor Staff Section -->
       <div id="staffSection" style="display:none;">
-        <% if (janitors.isEmpty()) { %>
-        <div class="text-center py-5 text-muted">No janitors found</div>
-        <% } else { %>
-        <div class="row">
-          <% for (User j : janitors) {
-               String initial = j.getName() != null && j.getName().length() > 0
-                   ? String.valueOf(j.getName().charAt(0)).toUpperCase() : "J";
-               long jCompleted = 0, jTotal = 0;
-               for (CleaningTask t : allTasks) {
-                   if (j.getName() != null && j.getName().equals(t.getAssignedToName())) {
-                       jTotal++;
-                       if (t.getStatus() == CleaningTask.Status.completed) jCompleted++;
-                   }
-               }
-               int jPct = jTotal > 0 ? (int)((jCompleted * 100) / jTotal) : 0;
-          %>
-          <div class="col-md-4 mb-3">
-            <div class="janitor-card">
-              <div class="d-flex align-items-center gap-3">
-                <div class="janitor-avatar"><%= initial %></div>
-                <div>
-                  <h6 class="mb-0"><%= j.getName() %></h6>
-                  <small class="text-muted"><%= j.getEmail() %></small>
+        <c:choose>
+          <c:when test="${empty janitors}">
+            <div class="text-center py-5 text-muted">No janitors found</div>
+          </c:when>
+          <c:otherwise>
+            <div class="row">
+              <c:forEach var="j" items="${janitors}">
+                <c:set var="jCompleted" value="${janitorCompletedMap[j.id] != null ? janitorCompletedMap[j.id] : 0}" />
+                <c:set var="jTotal" value="${janitorTotalMap[j.id] != null ? janitorTotalMap[j.id] : 0}" />
+                <c:set var="jPct" value="${janitorPctMap[j.id] != null ? janitorPctMap[j.id] : 0}" />
+                <div class="col-md-4 mb-3">
+                  <div class="janitor-card">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="janitor-avatar">${janitorInitialMap[j.id] != null ? janitorInitialMap[j.id] : 'J'}</div>
+                      <div>
+                        <h6 class="mb-0">${j.name}</h6>
+                        <small class="text-muted">${j.email}</small>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <div class="d-flex justify-content-between mb-1">
+                        <small>Task Completion</small>
+                        <small>${jCompleted}/${jTotal}</small>
+                      </div>
+                      <div class="janitor-progress">
+                        <div class="janitor-progress-fill" style="width:${jPct}%"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="mt-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <small>Task Completion</small>
-                  <small><%= jCompleted %>/<%= jTotal %></small>
-                </div>
-                <div class="janitor-progress">
-                  <div class="janitor-progress-fill" style="width:<%= jPct %>%"></div>
-                </div>
-              </div>
+              </c:forEach>
             </div>
-          </div>
-          <% } %>
-        </div>
-        <% } %>
+          </c:otherwise>
+        </c:choose>
       </div>
 
       <!-- Dispute Reports Section -->
@@ -432,50 +422,52 @@
         <div class="table-container">
           <h5><i class="bi bi-flag text-success"></i> Dispute Reports</h5>
           <p class="text-muted small">Reports filed by lecturers regarding cleaning quality</p>
-          <% if (lecturerReports.isEmpty()) { %>
-          <div class="text-center py-4 text-muted">No dispute reports</div>
-          <% } else { %>
-          <div class="table-responsive">
-            <table class="table table-custom align-middle">
-              <thead>
-                <tr>
-                  <th>Lecturer</th>
-                  <th>Task / Office</th>
-                  <th>Rating</th>
-                  <th>Reason</th>
-                  <th>Notes</th>
-                  <th>Reported At</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% for (JanitorReport r : lecturerReports) { %>
-                <tr>
-                  <td><strong><%= r.getLecturerName() != null ? r.getLecturerName() : "Unknown" %></strong></td>
-                  <td>
-                    <div><%= r.getTaskName() %></div>
-                    <% if (r.getActivityName() != null && !r.getActivityName().isEmpty()) { %>
-                    <small class="text-muted"><%= r.getActivityName() %></small>
-                    <% } %>
-                  </td>
-                  <td>
-                    <%
-                      int stars = r.getRating();
-                      for (int s = 1; s <= 5; s++) {
-                          if (s <= stars) { %><i class="bi bi-star-fill" style="color:#f0a500;font-size:0.85rem;"></i><% }
-                          else           { %><i class="bi bi-star"      style="color:#ccc;font-size:0.85rem;"></i><% }
-                      }
-                    %>
-                    <small class="ms-1 text-muted">(<%= stars %>/5)</small>
-                  </td>
-                  <td style="max-width:220px;"><small><%= r.getReason() %></small></td>
-                  <td style="max-width:160px;"><small><%= r.getNotes() != null && !r.getNotes().isEmpty() ? r.getNotes() : "—" %></small></td>
-                  <td><small><%= r.getReportedAt() != null ? dtf.format(r.getReportedAt()) : "—" %></small></td>
-                </tr>
-                <% } %>
-              </tbody>
-            </table>
-          </div>
-          <% } %>
+          <c:choose>
+            <c:when test="${empty lecturerReports}">
+              <div class="text-center py-4 text-muted">No dispute reports</div>
+            </c:when>
+            <c:otherwise>
+              <div class="table-responsive">
+                <table class="table table-custom align-middle">
+                  <thead>
+                    <tr>
+                      <th>Lecturer</th>
+                      <th>Task / Office</th>
+                      <th>Rating</th>
+                      <th>Reason</th>
+                      <th>Notes</th>
+                      <th>Reported At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <c:forEach var="r" items="${lecturerReports}">
+                      <tr>
+                        <td><strong>${empty r.lecturerName ? 'Unknown' : r.lecturerName}</strong></td>
+                        <td>
+                          <div>${r.taskName}</div>
+                          <c:if test="${not empty r.activityName}">
+                            <small class="text-muted">${r.activityName}</small>
+                          </c:if>
+                        </td>
+                        <td>
+                          <c:forEach begin="1" end="5" var="s">
+                            <c:choose>
+                              <c:when test="${s <= r.rating}"><i class="bi bi-star-fill" style="color:#f0a500;font-size:0.85rem;"></i></c:when>
+                              <c:otherwise><i class="bi bi-star" style="color:#ccc;font-size:0.85rem;"></i></c:otherwise>
+                            </c:choose>
+                          </c:forEach>
+                          <small class="ms-1 text-muted">(${r.rating}/5)</small>
+                        </td>
+                        <td style="max-width:220px;"><small>${r.reason}</small></td>
+                        <td style="max-width:160px;"><small>${empty r.notes ? '—' : r.notes}</small></td>
+                        <td><small>${empty reportReportedAtMap[r.id] ? '—' : reportReportedAtMap[r.id]}</small></td>
+                      </tr>
+                    </c:forEach>
+                  </tbody>
+                </table>
+              </div>
+            </c:otherwise>
+          </c:choose>
         </div>
       </div>
 
@@ -487,7 +479,7 @@
 <div class="modal fade modal-custom" id="assignOfficeModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/cleaning-tasks">
+      <form method="post" action="${ctx}/cleaning-tasks">
         <input type="hidden" name="action" value="create">
         <div class="modal-header">
           <h5 class="modal-title"><i class="bi bi-plus-circle-fill"></i> Assign Office for Cleaning</h5>
@@ -498,18 +490,18 @@
             <label class="form-label fw-semibold small">Office / Facility *</label>
             <select name="facilityId" class="form-select" required>
               <option value="">-- Select Office --</option>
-              <% for (Facility f : facilities) { %>
-              <option value="<%= f.getId() %>"><%= f.getName() %></option>
-              <% } %>
+              <c:forEach var="f" items="${facilities}">
+                <option value="${f.id}">${f.name}</option>
+              </c:forEach>
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">Assign To (Janitor) *</label>
             <select name="janitorId" class="form-select" required>
               <option value="">-- Select Janitor --</option>
-              <% for (User j : janitors) { %>
-              <option value="<%= j.getId() %>"><%= j.getName() %></option>
-              <% } %>
+              <c:forEach var="j" items="${janitors}">
+                <option value="${j.id}">${j.name}</option>
+              </c:forEach>
             </select>
           </div>
           <div class="mb-3">
@@ -534,7 +526,7 @@
 <div class="modal fade modal-custom" id="reassignModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/cleaning-tasks" id="reassignForm">
+      <form method="post" action="${ctx}/cleaning-tasks" id="reassignForm">
         <input type="hidden" name="action" value="reassign">
         <input type="hidden" name="id" id="reassignTaskId">
         <div class="modal-header">
@@ -544,9 +536,9 @@
         <div class="modal-body">
           <p>Reassign <strong id="reassignOfficeName"></strong> to:</p>
           <select name="janitorId" id="reassignJanitorSelect" class="form-select">
-            <% for (User j : janitors) { %>
-            <option value="<%= j.getId() %>"><%= j.getName() %></option>
-            <% } %>
+            <c:forEach var="j" items="${janitors}">
+              <option value="${j.id}">${j.name}</option>
+            </c:forEach>
           </select>
         </div>
         <div class="modal-footer">

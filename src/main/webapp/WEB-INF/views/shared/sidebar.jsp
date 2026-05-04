@@ -1,13 +1,10 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.User" %>
-<%
-    User currentUser = (User) session.getAttribute("loggedInUser");
-    String userName  = currentUser != null ? currentUser.getName() : "User";
-    String userRole  = currentUser != null ? currentUser.getRole().name() : "";
-    String activePage = (String) request.getAttribute("activePage");
-    if (activePage == null) activePage = "";
-    String ctx = request.getContextPath();
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="userName" value="${sessionScope.userName}" />
+<c:set var="userRole" value="${sessionScope.userRole}" />
+<c:set var="activePage" value="${requestScope.activePage}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <style>
     /* ── Mobile top bar ─────────────────────────────────── */
     .mobile-topbar {
@@ -91,7 +88,7 @@
         <i class="bi bi-list" style="font-size:1.7rem;"></i>
     </button>
     <span class="text-white fw-bold" style="font-family:'Playfair Display',serif;font-size:1.1rem;">SmartCampus</span>
-    <a href="<%= ctx %>/logout" class="btn btn-danger btn-sm rounded-pill px-3">
+    <a href="${ctx}/logout" class="btn btn-danger btn-sm rounded-pill px-3">
         <i class="bi bi-box-arrow-left"></i>
     </a>
 </div>
@@ -106,29 +103,34 @@
         <p class="text-white-50 small mb-0">Egerton University</p>
     </div>
 
-    <% if ("admin".equals(userRole)) { %>
-    <a href="<%= ctx %>/admin/dashboard"   class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="<%= ctx %>/admin/users"        class="nav-link-custom <%= "users".equals(activePage) ? "active" : "" %>"><i class="bi bi-people-fill"></i> Users</a>
-    <a href="<%= ctx %>/facilities"         class="nav-link-custom <%= "facilities".equals(activePage) ? "active" : "" %>"><i class="bi bi-building-fill"></i> Offices</a>
-    <% } else if ("lecturer".equals(userRole)) { %>
-    <a href="<%= ctx %>/lecturer/dashboard"  class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="reports"       class="nav-link-custom"><i class="bi bi-flag"></i> My Reports</a>
-    <% } else if ("janitor".equals(userRole)) { %>
-    <a href="<%= ctx %>/janitor/dashboard"   class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="history"       class="nav-link-custom"><i class="bi bi-clock-history"></i> Completed History</a>
-    <% } else if ("supervisor".equals(userRole)) { %>
-    <a href="<%= ctx %>/supervisor/dashboard" class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="monitor"        class="nav-link-custom"><i class="bi bi-tv"></i> Live Monitor</a>
-    <a href="#" data-section="staff"          class="nav-link-custom"><i class="bi bi-people"></i> Janitor Staff</a>
-    <a href="#" data-section="reports"        class="nav-link-custom"><i class="bi bi-flag"></i> Dispute Reports</a>
-    <% } %>
+    <c:choose>
+        <c:when test="${userRole eq 'admin'}">
+            <a href="${ctx}/admin/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="${ctx}/admin/users" class="nav-link-custom ${activePage eq 'users' ? 'active' : ''}"><i class="bi bi-people-fill"></i> Users</a>
+            <a href="${ctx}/facilities" class="nav-link-custom ${activePage eq 'facilities' ? 'active' : ''}"><i class="bi bi-building-fill"></i> Offices</a>
+        </c:when>
+        <c:when test="${userRole eq 'lecturer'}">
+            <a href="${ctx}/lecturer/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="reports" class="nav-link-custom"><i class="bi bi-flag"></i> My Reports</a>
+        </c:when>
+        <c:when test="${userRole eq 'janitor'}">
+            <a href="${ctx}/janitor/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="history" class="nav-link-custom"><i class="bi bi-clock-history"></i> Completed History</a>
+        </c:when>
+        <c:when test="${userRole eq 'supervisor'}">
+            <a href="${ctx}/supervisor/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="monitor" class="nav-link-custom"><i class="bi bi-tv"></i> Live Monitor</a>
+            <a href="#" data-section="staff" class="nav-link-custom"><i class="bi bi-people"></i> Janitor Staff</a>
+            <a href="#" data-section="reports" class="nav-link-custom"><i class="bi bi-flag"></i> Dispute Reports</a>
+        </c:when>
+    </c:choose>
 
     <div class="sidebar-bottom">
         <div class="sidebar-user-label">
-            <i class="bi bi-person-circle"></i> <%= userName %>
-            <span class="badge bg-success ms-1 text-capitalize"><%= userRole %></span>
+            <i class="bi bi-person-circle"></i> <c:out value="${empty userName ? 'User' : userName}" />
+            <span class="badge bg-success ms-1 text-capitalize"><c:out value="${userRole}" /></span>
         </div>
-        <a href="<%= ctx %>/logout" class="nav-link-custom nav-signout">
+        <a href="${ctx}/logout" class="nav-link-custom nav-signout">
             <i class="bi bi-box-arrow-left"></i> Sign Out
         </a>
     </div>
@@ -141,29 +143,34 @@
         <p class="text-white-50 small mb-0">Egerton University</p>
     </div>
 
-    <% if ("admin".equals(userRole)) { %>
-    <a href="<%= ctx %>/admin/dashboard"   class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="<%= ctx %>/admin/users"        class="nav-link-custom <%= "users".equals(activePage) ? "active" : "" %>"><i class="bi bi-people-fill"></i> Users</a>
-    <a href="<%= ctx %>/facilities"         class="nav-link-custom <%= "facilities".equals(activePage) ? "active" : "" %>"><i class="bi bi-building-fill"></i> Offices</a>
-    <% } else if ("lecturer".equals(userRole)) { %>
-    <a href="<%= ctx %>/lecturer/dashboard"  class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="reports"       class="nav-link-custom"><i class="bi bi-flag"></i> My Reports</a>
-    <% } else if ("janitor".equals(userRole)) { %>
-    <a href="<%= ctx %>/janitor/dashboard"   class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="history"       class="nav-link-custom"><i class="bi bi-clock-history"></i> Completed History</a>
-    <% } else if ("supervisor".equals(userRole)) { %>
-    <a href="<%= ctx %>/supervisor/dashboard" class="nav-link-custom <%= "dashboard".equals(activePage) ? "active" : "" %>"><i class="bi bi-speedometer2"></i> Dashboard</a>
-    <a href="#" data-section="monitor"        class="nav-link-custom"><i class="bi bi-tv"></i> Live Monitor</a>
-    <a href="#" data-section="staff"          class="nav-link-custom"><i class="bi bi-people"></i> Janitor Staff</a>
-    <a href="#" data-section="reports"        class="nav-link-custom"><i class="bi bi-flag"></i> Dispute Reports</a>
-    <% } %>
+    <c:choose>
+        <c:when test="${userRole eq 'admin'}">
+            <a href="${ctx}/admin/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="${ctx}/admin/users" class="nav-link-custom ${activePage eq 'users' ? 'active' : ''}"><i class="bi bi-people-fill"></i> Users</a>
+            <a href="${ctx}/facilities" class="nav-link-custom ${activePage eq 'facilities' ? 'active' : ''}"><i class="bi bi-building-fill"></i> Offices</a>
+        </c:when>
+        <c:when test="${userRole eq 'lecturer'}">
+            <a href="${ctx}/lecturer/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="reports" class="nav-link-custom"><i class="bi bi-flag"></i> My Reports</a>
+        </c:when>
+        <c:when test="${userRole eq 'janitor'}">
+            <a href="${ctx}/janitor/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="history" class="nav-link-custom"><i class="bi bi-clock-history"></i> Completed History</a>
+        </c:when>
+        <c:when test="${userRole eq 'supervisor'}">
+            <a href="${ctx}/supervisor/dashboard" class="nav-link-custom ${activePage eq 'dashboard' ? 'active' : ''}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="#" data-section="monitor" class="nav-link-custom"><i class="bi bi-tv"></i> Live Monitor</a>
+            <a href="#" data-section="staff" class="nav-link-custom"><i class="bi bi-people"></i> Janitor Staff</a>
+            <a href="#" data-section="reports" class="nav-link-custom"><i class="bi bi-flag"></i> Dispute Reports</a>
+        </c:when>
+    </c:choose>
 
     <div class="sidebar-bottom">
         <div class="sidebar-user-label">
-            <i class="bi bi-person-circle"></i> <%= userName %>
-            <span class="badge bg-success ms-1 text-capitalize"><%= userRole %></span>
+            <i class="bi bi-person-circle"></i> <c:out value="${empty userName ? 'User' : userName}" />
+            <span class="badge bg-success ms-1 text-capitalize"><c:out value="${userRole}" /></span>
         </div>
-        <a href="<%= ctx %>/logout" class="nav-link-custom nav-signout">
+        <a href="${ctx}/logout" class="nav-link-custom nav-signout">
             <i class="bi bi-box-arrow-left"></i> Sign Out
         </a>
     </div>

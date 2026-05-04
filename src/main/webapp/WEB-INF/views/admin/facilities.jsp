@@ -1,18 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,java.util.*" %>
-<%
-    request.setAttribute("activePage", "facilities");
-    String ctx = request.getContextPath();
-    String success  = request.getParameter("success");
-    String errorMsg = (String) request.getAttribute("error");
-
-    @SuppressWarnings("unchecked")
-    List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
-    if (facilities == null) facilities = Collections.emptyList();
-
-    User sessionUser = (User) session.getAttribute("loggedInUser");
-    boolean isAdmin = sessionUser != null && sessionUser.getRole() == User.Role.admin;
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="activePage" value="facilities" scope="request" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,25 +45,25 @@
           <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;">Facilities</h1>
           <p class="text-muted small mb-0">Campus facility directory</p>
         </div>
-        <% if (isAdmin) { %>
+        <c:if test="${sessionScope.userRole eq 'admin'}">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addFacilityModal">
           <i class="bi bi-plus-circle-fill me-1"></i> Add Facility
         </button>
-        <% } %>
+        </c:if>
       </div>
 
-      <% if (success != null) { %>
+      <c:if test="${not empty param.success}">
       <div class="alert alert-success alert-dismissible fade show">
         <i class="bi bi-check-circle-fill me-2"></i>Operation completed successfully.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
-      <% if (errorMsg != null) { %>
+      </c:if>
+      <c:if test="${not empty requestScope.error}">
       <div class="alert alert-danger alert-dismissible fade show">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><%= errorMsg %>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><c:out value="${requestScope.error}" />
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
+      </c:if>
 
       <div class="table-container">
         <div class="table-responsive">
@@ -86,33 +75,43 @@
               </tr>
             </thead>
             <tbody>
-              <% for (Facility f : facilities) { %>
-              <tr>
-                <td class="text-muted small"><%= f.getId() %></td>
-                <td class="fw-medium"><%= f.getName() %></td>
-                <td class="text-muted small"><%= f.getLocation() %></td>
-                <td class="text-capitalize"><%= f.getFacilityType().name() %></td>
-                <td><%= f.getCapacity() > 0 ? f.getCapacity() : "—" %></td>
-                <td><span class="badge rounded-pill badge-status-<%= f.getStatus().name() %> text-capitalize px-3"><%= f.getStatus().name() %></span></td>
-                <td>
-                  <% if (isAdmin) { %>
-                  <button class="btn btn-sm btn-outline-primary me-1"
-                          onclick="openEditFacility(<%= f.getId() %>,'<%= f.getName().replace("'","\\'") %>','<%= f.getLocation().replace("'","\\'") %>','<%= f.getFacilityType().name() %>',<%= f.getCapacity() %>,'<%= f.getStatus().name() %>','<%= f.getDescription() != null ? f.getDescription().replace("'","\\'") : "" %>')">
-                    <i class="bi bi-pencil-fill"></i>
-                  </button>
-                  <form method="post" action="<%= ctx %>/facilities" class="d-inline"
-                        onsubmit="return confirm('Delete this facility? This cannot be undone.')">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="id" value="<%= f.getId() %>">
-                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></button>
-                  </form>
-                  <% } %>
-                </td>
-              </tr>
-              <% } %>
-              <% if (facilities.isEmpty()) { %>
-              <tr><td colspan="7" class="text-center text-muted py-4">No facilities found.</td></tr>
-              <% } %>
+              <c:choose>
+                <c:when test="${empty facilities}">
+                  <tr><td colspan="7" class="text-center text-muted py-4">No facilities found.</td></tr>
+                </c:when>
+                <c:otherwise>
+                  <c:forEach var="f" items="${facilities}">
+                  <tr>
+                    <td class="text-muted small"><c:out value="${f.id}" /></td>
+                    <td class="fw-medium"><c:out value="${f.name}" /></td>
+                    <td class="text-muted small"><c:out value="${f.location}" /></td>
+                    <td class="text-capitalize"><c:out value="${f.facilityType.name()}" /></td>
+                    <td><c:out value="${f.capacity > 0 ? f.capacity : '—'}" /></td>
+                    <td><span class="badge rounded-pill badge-status-${f.status.name()} text-capitalize px-3"><c:out value="${f.status.name()}" /></span></td>
+                    <td>
+                      <c:if test="${sessionScope.userRole eq 'admin'}">
+                      <button class="btn btn-sm btn-outline-primary me-1"
+                              data-fac-id="${f.id}"
+                              data-fac-name="${f.name}"
+                              data-fac-loc="${f.location}"
+                              data-fac-cap="${f.capacity}"
+                              data-fac-status="${f.status.name()}"
+                              data-fac-desc="${f.description}"
+                              onclick="openEditFacility(this)">
+                        <i class="bi bi-pencil-fill"></i>
+                      </button>
+                      <form method="post" action="${ctx}/facilities" class="d-inline"
+                            onsubmit="return confirm('Delete this facility? This cannot be undone.')">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="${f.id}">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></button>
+                      </form>
+                      </c:if>
+                    </td>
+                  </tr>
+                  </c:forEach>
+                </c:otherwise>
+              </c:choose>
             </tbody>
           </table>
         </div>
@@ -121,12 +120,12 @@
   </div>
 </div>
 
-<% if (isAdmin) { %>
+<c:if test="${sessionScope.userRole eq 'admin'}">
 <!-- Add Facility Modal -->
 <div class="modal fade" id="addFacilityModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/facilities">
+      <form method="post" action="${ctx}/facilities">
         <input type="hidden" name="action" value="create">
         <div class="modal-header">
           <h5 class="modal-title fw-semibold">Add New Facility</h5>
@@ -185,7 +184,7 @@
 <div class="modal fade" id="editFacilityModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/facilities">
+      <form method="post" action="${ctx}/facilities">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="id" id="editFacId">
         <div class="modal-header">
@@ -240,7 +239,6 @@
     </div>
   </div>
 </div>
-<% } %>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>

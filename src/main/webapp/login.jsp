@@ -1,17 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.User" %>
-<%
-    // Redirect to dashboard if already logged in
-    HttpSession existingSession = request.getSession(false);
-    if (existingSession != null && existingSession.getAttribute("loggedInUser") != null) {
-        User existingUser = (User) existingSession.getAttribute("loggedInUser");
-        String dashPath = request.getContextPath() + "/" + existingUser.getRole().name() + "/dashboard";
-        response.sendRedirect(dashPath);
-        return;
-    }
-    String errorMessage = (String) request.getAttribute("error");
-    String emailValue   = (String) request.getAttribute("emailValue");
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:if test="${not empty sessionScope.loggedInUser}">
+    <c:redirect url="${pageContext.request.contextPath}/${sessionScope.userRole}/dashboard" />
+</c:if>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -117,12 +108,12 @@
 
         <div class="login-card">
             <h2>Welcome back</h2>
-            <form action="<%= request.getContextPath() %>/login" method="post" id="loginForm">
+            <form action="${pageContext.request.contextPath}/login" method="post" id="loginForm">
                 <div class="form-group">
                     <label for="emailInput" class="form-label"><i class="bi bi-envelope-fill"></i> Email address</label>
                     <input type="email" name="email" class="form-control" id="emailInput"
                            placeholder="name.role@egerton.ac.ke"
-                           value="<%= emailValue != null ? emailValue : "" %>"
+                           value="${requestScope.emailValue}"
                            autocomplete="off"
                            required>
                 </div>
@@ -135,11 +126,11 @@
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
                 </button>
             </form>
-            <% if (errorMessage != null) { %>
+            <c:if test="${not empty requestScope.error}">
             <div class="alert-error">
-                <i class="bi bi-exclamation-triangle-fill"></i> <%= errorMessage %>
+                <i class="bi bi-exclamation-triangle-fill"></i> <c:out value="${requestScope.error}" />
             </div>
-            <% } %>
+            </c:if>
         </div>
 
 <!--        <div class="demo-card">

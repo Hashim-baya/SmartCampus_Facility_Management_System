@@ -1,34 +1,18 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,com.smartcampus.model.TaskActivity,java.util.*" %>
-<%
-    request.setAttribute("activePage", "cleaning");
-    String ctx = request.getContextPath();
-    String success  = request.getParameter("success");
-    String errorMsg = (String) request.getAttribute("error");
-
-    User currentUser = (User) session.getAttribute("loggedInUser");
-
-    @SuppressWarnings("unchecked")
-    List<CleaningTask> tasks = (List<CleaningTask>) request.getAttribute("tasks");
-    if (tasks == null) tasks = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
-    if (facilities == null) facilities = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    List<User> janitors = (List<User>) request.getAttribute("janitors");
-    if (janitors == null) janitors = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    Map<Integer, List<TaskActivity>> activitiesMap =
-        (Map<Integer, List<TaskActivity>>) request.getAttribute("activitiesMap");
-    if (activitiesMap == null) activitiesMap = Collections.emptyMap();
-
-    boolean isJanitor = currentUser != null && currentUser.getRole() == User.Role.janitor;
-    boolean canCreate = currentUser != null && currentUser.getRole() == User.Role.supervisor;
-    boolean canDelete = currentUser != null && currentUser.getRole() == User.Role.supervisor;
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<c:set var="activePage" value="cleaning" scope="request" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<c:set var="success" value="${param.success}" />
+<c:set var="errorMsg" value="${requestScope.error}" />
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="tasks" value="${requestScope.tasks != null ? requestScope.tasks : []}" />
+<c:set var="facilities" value="${requestScope.facilities != null ? requestScope.facilities : []}" />
+<c:set var="janitors" value="${requestScope.janitors != null ? requestScope.janitors : []}" />
+<c:set var="activitiesMap" value="${requestScope.activitiesMap != null ? requestScope.activitiesMap : {}}" />
+<c:set var="isJanitor" value="${currentUser != null && currentUser.role.name() == 'janitor'}" />
+<c:set var="canCreate" value="${currentUser != null && currentUser.role.name() == 'supervisor'}" />
+<c:set var="canDelete" value="${currentUser != null && currentUser.role.name() == 'supervisor'}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,30 +61,31 @@
           <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;">Cleaning Tasks</h1>
           <p class="text-muted small mb-0">Schedule and track cleaning activities</p>
         </div>
-        <% if (canCreate) { %>
+        <c:if test="${canCreate}">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newTaskModal">
           <i class="bi bi-plus-circle-fill me-1"></i> Schedule Task
         </button>
-        <% } %>
+        </c:if>
       </div>
 
-      <% if (success != null) { %>
+      <c:if test="${success != null}">
       <div class="alert alert-success alert-dismissible fade show">
         <i class="bi bi-check-circle-fill me-2"></i>Operation completed successfully.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
-      <% if (errorMsg != null) { %>
+      </c:if>
+      <c:if test="${errorMsg != null}">
       <div class="alert alert-danger alert-dismissible fade show">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><%= errorMsg %>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>${errorMsg}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      <% } %>
+      </c:if>
 
       <div class="table-container">
-        <% if (tasks.isEmpty()) { %>
+        <c:if test="${fn:length(tasks) == 0}">
         <p class="text-muted text-center py-4">No cleaning tasks found.</p>
-        <% } else { %>
+        </c:if>
+        <c:if test="${fn:length(tasks) > 0}">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light">
@@ -110,85 +95,85 @@
                 <th>Scheduled Date</th>
                 <th>Status</th>
                 <th>Notes</th>
-                <% if (isJanitor) { %><th>Activities</th><% } %>
+                <c:if test="${isJanitor}"><th>Activities</th></c:if>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <% for (CleaningTask t : tasks) {
-                   List<TaskActivity> acts = activitiesMap.getOrDefault(t.getId(), Collections.emptyList());
-              %>
+              <c:forEach var="t" items="${tasks}">
+                <c:set var="acts" value="${activitiesMap[t.id] != null ? activitiesMap[t.id] : []}" />
               <tr>
-                <td class="fw-medium"><%= t.getFacilityName() %></td>
-                <td class="text-muted small"><%= t.getAssignedToName() %></td>
-                <td class="text-muted small"><%= t.getScheduledDate() %></td>
-                <td><span class="badge rounded-pill badge-status-<%= t.getStatus().name() %> text-capitalize"><%= t.getStatus().name().replace("_"," ") %></span></td>
-                <td class="text-muted small"><%= t.getNotes() != null ? t.getNotes() : "" %></td>
-                <% if (isJanitor) { %>
+                <td class="fw-medium">${t.facilityName}</td>
+                <td class="text-muted small">${t.assignedToName}</td>
+                <td class="text-muted small">${t.scheduledDate}</td>
+                <td><span class="badge rounded-pill badge-status-${t.status.name()} text-capitalize">${fn:replace(t.status.name(), '_', ' ')}</span></td>
+                <td class="text-muted small">${t.notes != null ? t.notes : ''}</td>
+                <c:if test="${isJanitor}">
                 <td>
-                  <% if (acts.isEmpty()) { %>
+                  <c:if test="${fn:length(acts) == 0}">
                   <span class="text-muted small">—</span>
-                  <% } else {
-                       boolean dustOnly = acts.size() == 1; %>
+                  </c:if>
+                  <c:if test="${fn:length(acts) > 0}">
+                    <c:set var="dustOnly" value="${fn:length(acts) == 1}" />
                   <div class="small text-muted mb-1">
-                    <%= dustOnly ? "Dust only" : "Full clean" %>
+                    <c:choose><c:when test="${dustOnly}">Dust only</c:when><c:otherwise>Full clean</c:otherwise></c:choose>
                   </div>
                   <ul class="activity-checklist">
-                    <% for (TaskActivity act : acts) { %>
-                    <li class="<%= act.isDone() ? "done" : "" %>">
-                      <form method="post" action="<%= ctx %>/cleaning-tasks" style="display:contents;">
+                    <c:forEach var="act" items="${acts}">
+                    <li class="${act.done ? 'done' : ''}">
+                      <form method="post" action="${ctx}/cleaning-tasks" style="display:contents;">
                         <input type="hidden" name="action" value="completeActivity">
-                        <input type="hidden" name="activityId" value="<%= act.getId() %>">
-                        <input type="hidden" name="done" value="<%= act.isDone() ? "false" : "true" %>">
-                        <input type="checkbox" id="ta<%= act.getId() %>"
-                               <%= act.isDone() ? "checked" : "" %>
+                        <input type="hidden" name="activityId" value="${act.id}">
+                        <input type="hidden" name="done" value="${act.done ? 'false' : 'true'}">
+                        <input type="checkbox" id="ta${act.id}"
+                               <c:if test="${act.done}">checked</c:if>
                                onchange="this.form.submit()">
-                        <label for="ta<%= act.getId() %>"><%= act.getActivity() %></label>
+                        <label for="ta${act.id}">${act.activity}</label>
                       </form>
                     </li>
-                    <% } %>
+                    </c:forEach>
                   </ul>
-                  <% } %>
+                  </c:if>
                 </td>
-                <% } %>
+                </c:if>
                 <td>
-                  <form method="post" action="<%= ctx %>/cleaning-tasks" class="d-flex gap-1">
+                  <form method="post" action="${ctx}/cleaning-tasks" class="d-flex gap-1">
                     <input type="hidden" name="action" value="updateStatus">
-                    <input type="hidden" name="id" value="<%= t.getId() %>">
+                    <input type="hidden" name="id" value="${t.id}">
                     <select name="status" class="form-select form-select-sm" style="width:115px;">
-                      <option value="pending"     <%= t.getStatus() == CleaningTask.Status.pending     ? "selected" : "" %>>Pending</option>
-                      <option value="in_progress" <%= t.getStatus() == CleaningTask.Status.in_progress ? "selected" : "" %>>In Progress</option>
-                      <option value="completed"   <%= t.getStatus() == CleaningTask.Status.completed   ? "selected" : "" %>>Completed</option>
-                      <option value="skipped"     <%= t.getStatus() == CleaningTask.Status.skipped     ? "selected" : "" %>>Skipped</option>
+                      <option value="pending" <c:if test="${t.status == 'pending'}">selected</c:if>>Pending</option>
+                      <option value="in_progress" <c:if test="${t.status == 'in_progress'}">selected</c:if>>In Progress</option>
+                      <option value="completed" <c:if test="${t.status == 'completed'}">selected</c:if>>Completed</option>
+                      <option value="skipped" <c:if test="${t.status == 'skipped'}">selected</c:if>>Skipped</option>
                     </select>
                     <button class="btn btn-sm btn-primary">Update</button>
                   </form>
-                  <% if (canDelete) { %>
-                  <form method="post" action="<%= ctx %>/cleaning-tasks" class="d-inline"
+                  <c:if test="${canDelete}">
+                  <form method="post" action="${ctx}/cleaning-tasks" class="d-inline"
                         onsubmit="return confirm('Delete this task?')">
                     <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="id" value="<%= t.getId() %>">
+                    <input type="hidden" name="id" value="${t.id}">
                     <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></button>
                   </form>
-                  <% } %>
+                  </c:if>
                 </td>
               </tr>
-              <% } %>
+              </c:forEach>
             </tbody>
           </table>
         </div>
-        <% } %>
+        </c:if>
       </div>
     </main>
   </div>
 </div>
 
-<% if (canCreate) { %>
+<c:if test="${canCreate}">
 <!-- New Cleaning Task Modal -->
 <div class="modal fade" id="newTaskModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="post" action="<%= ctx %>/cleaning-tasks">
+      <form method="post" action="${ctx}/cleaning-tasks">
         <input type="hidden" name="action" value="create">
         <div class="modal-header">
           <h5 class="modal-title fw-semibold">Schedule Cleaning Task</h5>
@@ -199,18 +184,18 @@
             <label class="form-label fw-semibold small">Facility *</label>
             <select name="facilityId" class="form-select" required>
               <option value="">-- Select Facility --</option>
-              <% for (Facility f : facilities) { %>
-              <option value="<%= f.getId() %>"><%= f.getName() %></option>
-              <% } %>
+              <c:forEach var="f" items="${facilities}">
+              <option value="${f.id}">${f.name}</option>
+              </c:forEach>
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">Assign To (Janitor) *</label>
             <select name="janitorId" class="form-select" required>
               <option value="">-- Select Janitor --</option>
-              <% for (User j : janitors) { %>
-              <option value="<%= j.getId() %>"><%= j.getName() %></option>
-              <% } %>
+              <c:forEach var="j" items="${janitors}">
+              <option value="${j.id}">${j.name}</option>
+              </c:forEach>
             </select>
           </div>
           <div class="mb-3">
@@ -230,7 +215,7 @@
     </div>
   </div>
 </div>
-<% } %>
+</c:if>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>

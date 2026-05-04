@@ -1,28 +1,29 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.*,com.smartcampus.model.TaskActivity,java.util.*" %>
-<%
-    request.setAttribute("activePage", "dashboard");
-    User currentUser = (User) session.getAttribute("loggedInUser");
-    String ctx = request.getContextPath();
-
-    @SuppressWarnings("unchecked")
-    List<CleaningTask> myTasks = (List<CleaningTask>) request.getAttribute("myTasks");
-    if (myTasks == null) myTasks = Collections.emptyList();
-
-    @SuppressWarnings("unchecked")
-    Map<Integer, List<TaskActivity>> activitiesMap =
-        (Map<Integer, List<TaskActivity>>) request.getAttribute("activitiesMap");
-    if (activitiesMap == null) activitiesMap = Collections.emptyMap();
-
-    int completedCount = 0;
-    int pendingCount   = 0;
-    for (CleaningTask t : myTasks) {
-        if (t.getStatus() == CleaningTask.Status.completed) completedCount++;
-        if (t.getStatus() == CleaningTask.Status.pending)   pendingCount++;
-    }
-    String firstName = (currentUser.getName() != null && !currentUser.getName().isEmpty())
-                       ? currentUser.getName().split(" ")[0] : "Janitor";
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<c:set var="activePage" value="dashboard" scope="request" />
+<c:set var="currentUser" value="${sessionScope.loggedInUser}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
+<c:set var="myTasks" value="${requestScope.myTasks != null ? requestScope.myTasks : []}" />
+<c:set var="activitiesMap" value="${requestScope.activitiesMap != null ? requestScope.activitiesMap : {}}" />
+<c:set var="completedCount" value="0" />
+<c:set var="pendingCount" value="0" />
+<c:forEach var="t" items="${myTasks}">
+  <c:if test="${t.status == 'completed'}">
+    <c:set var="completedCount" value="${completedCount + 1}" />
+  </c:if>
+  <c:if test="${t.status == 'pending'}">
+    <c:set var="pendingCount" value="${pendingCount + 1}" />
+  </c:if>
+</c:forEach>
+<c:set var="firstName">
+  <c:choose>
+    <c:when test="${currentUser.name != null && fn:length(currentUser.name) > 0}">
+      ${fn:substring(currentUser.name, 0, fn:indexOf(currentUser.name, ' ') > 0 ? fn:indexOf(currentUser.name, ' ') : fn:length(currentUser.name))}
+    </c:when>
+    <c:otherwise>Janitor</c:otherwise>
+  </c:choose>
+</c:set>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -146,13 +147,13 @@
         <!-- Welcome Header -->
         <div class="welcome-header d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1>Welcome, <%= firstName %></h1>
+            <h1>Welcome, ${firstName}</h1>
             <p>Janitor Dashboard — Your assigned tasks</p>
           </div>
           <span class="badge bg-light text-dark p-2 shadow-sm">
             <i class="bi bi-person-circle"></i>
-            Janitor &nbsp;|&nbsp; <%= currentUser.getEmail() %>
-            <% if (currentUser.getStaffId() != null) { %> &nbsp;|&nbsp; ID: <%= currentUser.getStaffId() %><% } %>
+            Janitor &nbsp;|&nbsp; ${currentUser.email}
+            <c:if test="${currentUser.staffId != null}"> &nbsp;|&nbsp; ID: ${currentUser.staffId}</c:if>
           </span>
         </div>
 
@@ -168,21 +169,21 @@
           <div class="col-md-4 mb-3">
             <div class="stat-card">
               <div class="stat-icon"><i class="bi bi-briefcase"></i></div>
-              <h3><%= myTasks.size() %></h3>
+              <h3>${fn:length(myTasks)}</h3>
               <p>Total Assigned</p>
             </div>
           </div>
           <div class="col-md-4 mb-3">
             <div class="stat-card">
               <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
-              <h3><%= completedCount %></h3>
+              <h3>${completedCount}</h3>
               <p>Completed</p>
             </div>
           </div>
           <div class="col-md-4 mb-3">
             <div class="stat-card">
               <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-              <h3><%= pendingCount %></h3>
+              <h3>${pendingCount}</h3>
               <p>Pending</p>
             </div>
           </div>
@@ -193,83 +194,87 @@
           <h5 class="fw-semibold mb-0"><i class="bi bi-building text-success"></i> My Assigned Offices</h5>
         </div>
 
-        <% if (myTasks.isEmpty()) { %>
+        <c:if test="${fn:length(myTasks) == 0}">
         <div class="office-card text-center py-5">
           <i class="bi bi-check-circle text-success" style="font-size:2.5rem;"></i>
           <p class="mt-3 text-muted">No cleaning tasks assigned.</p>
         </div>
-        <% } else { %>
+        </c:if>
+        <c:if test="${fn:length(myTasks) > 0}">
         <div id="tasksList">
-          <% for (CleaningTask t : myTasks) {
-               String statusClass = "badge-" + t.getStatus().name();
-               String statusLabel = t.getStatus().name().replace("_", " ");
-               String facilityLabel = (t.getFacilityName() != null && !t.getFacilityName().isEmpty())
-                                      ? t.getFacilityName() : "Office #" + t.getFacilityId();
-               List<TaskActivity> activities = activitiesMap.getOrDefault(t.getId(), Collections.emptyList());
-               boolean dustOnly = activities.size() == 1;
-               int doneCount    = 0;
-               for (TaskActivity a : activities) { if (a.isDone()) doneCount++; }
-          %>
-          <div class="office-card" data-status="<%= t.getStatus().name() %>">
+          <c:forEach var="t" items="${myTasks}">
+            <c:set var="statusClass" value="badge-${t.status.name()}" />
+            <c:set var="statusLabel" value="${fn:replace(t.status.name(), '_', ' ')}" />
+            <c:set var="facilityLabel" value="${t.facilityName != null && fn:length(t.facilityName) > 0 ? t.facilityName : 'Office #'.concat(t.facilityId)}" />
+            <c:set var="activities" value="${activitiesMap[t.id] != null ? activitiesMap[t.id] : []}" />
+            <c:set var="dustOnly" value="${fn:length(activities) == 1}" />
+            <c:set var="doneCount" value="0" />
+            <c:forEach var="a" items="${activities}">
+              <c:if test="${a.done}">
+                <c:set var="doneCount" value="${doneCount + 1}" />
+              </c:if>
+            </c:forEach>
+          <div class="office-card" data-status="${t.status.name()}">
             <div class="office-header">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <h4><%= facilityLabel %></h4>
-                  <p class="office-location"><i class="bi bi-geo-alt"></i> Facility ID: <%= t.getFacilityId() %></p>
+                  <h4>${facilityLabel}</h4>
+                  <p class="office-location"><i class="bi bi-geo-alt"></i> Facility ID: ${t.facilityId}</p>
                 </div>
-                <span class="<%= statusClass %> text-capitalize"><%= statusLabel %></span>
+                <span class="${statusClass} text-capitalize">${statusLabel}</span>
               </div>
             </div>
 
             <div class="office-tasks">
               <div class="office-task-row">
                 <i class="bi bi-calendar-event"></i>
-                <span><strong>Scheduled:</strong> <%= t.getScheduledDate() %></span>
+                <span><strong>Scheduled:</strong> ${t.scheduledDate}</span>
               </div>
-              <% if (t.getNotes() != null && !t.getNotes().isEmpty()) { %>
+              <c:if test="${t.notes != null && fn:length(t.notes) > 0}">
               <div class="office-task-row">
                 <i class="bi bi-sticky"></i>
-                <span><strong>Notes:</strong> <%= t.getNotes() %></span>
+                <span><strong>Notes:</strong> ${t.notes}</span>
               </div>
-              <% } %>
+              </c:if>
             </div>
 
             <!-- Activity Checklist -->
-            <% if (!activities.isEmpty()) { %>
+            <c:if test="${fn:length(activities) > 0}">
             <div class="mt-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <strong class="small"><i class="bi bi-list-check text-success"></i>
-                  <%= dustOnly ? "Cleaning Activities (dust only – lecturer not checked in)" : "Cleaning Activities (full clean)" %>
+                  <c:if test="${dustOnly}">Cleaning Activities (dust only – lecturer not checked in)</c:if>
+                  <c:if test="${!dustOnly}">Cleaning Activities (full clean)</c:if>
                 </strong>
-                <span class="small text-muted"><%= doneCount %>/<%= activities.size() %> done</span>
+                <span class="small text-muted">${doneCount}/${fn:length(activities)} done</span>
               </div>
               <ul class="activity-list">
-                <% for (TaskActivity act : activities) { %>
-                <li class="activity-item<%= act.isDone() ? " done" : "" %>">
-                  <form method="post" action="<%= ctx %>/cleaning-tasks" style="display:contents;">
+                <c:forEach var="act" items="${activities}">
+                <li class="activity-item${act.done ? ' done' : ''}">
+                  <form method="post" action="${ctx}/cleaning-tasks" style="display:contents;">
                     <input type="hidden" name="action" value="completeActivity">
-                    <input type="hidden" name="activityId" value="<%= act.getId() %>">
-                    <input type="hidden" name="done" value="<%= act.isDone() ? "false" : "true" %>">
-                    <input type="checkbox" id="act<%= act.getId() %>"
-                           <%= act.isDone() ? "checked" : "" %>
+                    <input type="hidden" name="activityId" value="${act.id}">
+                    <input type="hidden" name="done" value="${act.done ? 'false' : 'true'}">
+                    <input type="checkbox" id="act${act.id}"
+                           <c:if test="${act.done}">checked</c:if>
                            onchange="this.form.submit()">
-                    <label for="act<%= act.getId() %>"><%= act.getActivity() %></label>
+                    <label for="act${act.id}">${act.activity}</label>
                   </form>
                 </li>
-                <% } %>
+                </c:forEach>
               </ul>
             </div>
-            <% } %>
+            </c:if>
 
             <div class="office-actions">
-              <form method="post" action="<%= ctx %>/cleaning-tasks" class="d-flex gap-2 align-items-center">
+              <form method="post" action="${ctx}/cleaning-tasks" class="d-flex gap-2 align-items-center">
                 <input type="hidden" name="action" value="updateStatus">
-                <input type="hidden" name="id" value="<%= t.getId() %>">
+                <input type="hidden" name="id" value="${t.id}">
                 <select name="status" class="form-select form-select-sm" style="width:140px;">
-                  <option value="pending"     <%= t.getStatus() == CleaningTask.Status.pending     ? "selected" : "" %>>Pending</option>
-                  <option value="in_progress" <%= t.getStatus() == CleaningTask.Status.in_progress ? "selected" : "" %>>In Progress</option>
-                  <option value="completed"   <%= t.getStatus() == CleaningTask.Status.completed   ? "selected" : "" %>>Completed</option>
-                  <option value="skipped"     <%= t.getStatus() == CleaningTask.Status.skipped     ? "selected" : "" %>>Skipped</option>
+                  <option value="pending" <c:if test="${t.status == 'pending'}">selected</c:if>>Pending</option>
+                  <option value="in_progress" <c:if test="${t.status == 'in_progress'}">selected</c:if>>In Progress</option>
+                  <option value="completed" <c:if test="${t.status == 'completed'}">selected</c:if>>Completed</option>
+                  <option value="skipped" <c:if test="${t.status == 'skipped'}">selected</c:if>>Skipped</option>
                 </select>
                 <button type="submit" class="btn btn-sm btn-success" style="border-radius:40px;padding:6px 18px;font-weight:600;">
                   <i class="bi bi-check2-circle"></i> Update
@@ -277,9 +282,9 @@
               </form>
             </div>
           </div>
-          <% } %>
+          </c:forEach>
         </div>
-        <% } %>
+        </c:if>
       </div>
 
       <!-- Completed History Section -->
@@ -288,28 +293,32 @@
           <div class="card-body p-4">
             <h5 class="fw-semibold mb-1"><i class="bi bi-clock-history text-success"></i> Completed Tasks History</h5>
             <p class="text-muted small mb-3">Records of tasks you've completed</p>
-            <% boolean hasCompleted = false;
-               for (CleaningTask t : myTasks) {
-                 if (t.getStatus() == CleaningTask.Status.completed) { hasCompleted = true; break; }
-               }
-               if (!hasCompleted) { %>
+            <c:set var="hasCompleted" value="false" />
+            <c:forEach var="t" items="${myTasks}">
+              <c:if test="${t.status == 'completed'}">
+                <c:set var="hasCompleted" value="true" />
+              </c:if>
+            </c:forEach>
+            <c:if test="${!hasCompleted}">
             <div class="text-center py-5">
               <i class="bi bi-inbox text-muted" style="font-size:2.5rem;"></i>
               <p class="mt-2 text-muted">No completed tasks yet</p>
             </div>
-            <% } else {
-                 for (CleaningTask t : myTasks) {
-                   if (t.getStatus() != CleaningTask.Status.completed) continue;
-                   String facilityLabel = (t.getFacilityName() != null && !t.getFacilityName().isEmpty())
-                                          ? t.getFacilityName() : "Office #" + t.getFacilityId(); %>
+            </c:if>
+            <c:if test="${hasCompleted}">
+              <c:forEach var="t" items="${myTasks}">
+                <c:if test="${t.status == 'completed'}">
+                  <c:set var="facilityLabel" value="${t.facilityName != null && fn:length(t.facilityName) > 0 ? t.facilityName : 'Office #'.concat(t.facilityId)}" />
             <div class="history-item">
               <div style="flex:1;">
-                <p class="mb-1"><strong><%= facilityLabel %></strong></p>
-                <p class="mb-0 small text-muted">Scheduled: <%= t.getScheduledDate() %></p>
+                <p class="mb-1"><strong>${facilityLabel}</strong></p>
+                <p class="mb-0 small text-muted">Scheduled: ${t.scheduledDate}</p>
               </div>
               <span class="badge-completed"><i class="bi bi-check-circle"></i> Done</span>
             </div>
-            <% } } %>
+                </c:if>
+              </c:forEach>
+            </c:if>
           </div>
         </div>
       </div>

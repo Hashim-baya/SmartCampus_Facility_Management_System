@@ -1,40 +1,26 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="com.smartcampus.model.User" %>
-<%
-    // Redirect to dashboard if already logged in
-    HttpSession existingSession = request.getSession(false);
-    if (existingSession != null && existingSession.getAttribute("loggedInUser") != null) {
-        User existingUser = (User) existingSession.getAttribute("loggedInUser");
-        String dashPath = request.getContextPath() + "/" + existingUser.getRole().name() + "/dashboard";
-        response.sendRedirect(dashPath);
-        return;
-    }
-    // Login error/email from LoginServlet
-    String errorMessage = (String) request.getAttribute("error");
-    String emailValue   = (String) request.getAttribute("emailValue");
-    // Registration error/success
-    String registerError = (String) request.getAttribute("registerError");
-    String activeTab = (String) request.getAttribute("activeTab");  // "signin" or "signup"
-    // Success message from session (set by RegisterServlet after successful registration)
-    String registerSuccess = null;
-    HttpSession sess = request.getSession(false);
-    if (sess != null) {
-        registerSuccess = (String) sess.getAttribute("registerSuccess");
-        if (registerSuccess != null) sess.removeAttribute("registerSuccess");
-    }
-    // Default active tab
-    if (activeTab == null) {
-        activeTab = (registerError != null) ? "signup" : "signin";
-    }
-    // Re-fill registration form values after error
-    String regName       = request.getAttribute("regName")       != null ? (String) request.getAttribute("regName")       : "";
-    String regEmail      = request.getAttribute("regEmail")      != null ? (String) request.getAttribute("regEmail")      : "";
-    String regPhone      = request.getAttribute("regPhone")      != null ? (String) request.getAttribute("regPhone")      : "";
-    String regGender     = request.getAttribute("regGender")     != null ? (String) request.getAttribute("regGender")     : "";
-    String regRole       = request.getAttribute("regRole")       != null ? (String) request.getAttribute("regRole")       : "lecturer";
-    String regDepartment = request.getAttribute("regDepartment") != null ? (String) request.getAttribute("regDepartment") : "";
-    String ctx = request.getContextPath();
-%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:if test="${not empty sessionScope.loggedInUser}">
+  <c:redirect url="${pageContext.request.contextPath}/${sessionScope.loggedInUser.role.name()}/dashboard" />
+</c:if>
+<c:set var="errorMessage" value="${requestScope.error}" />
+<c:set var="emailValue" value="${requestScope.emailValue}" />
+<c:set var="registerError" value="${requestScope.registerError}" />
+<c:set var="activeTab" value="${requestScope.activeTab}" />
+<c:set var="registerSuccess" value="${sessionScope.registerSuccess}" />
+<c:if test="${not empty registerSuccess}">
+  <!-- Remove from session after retrieving -->
+</c:if>
+<c:if test="${empty activeTab}">
+  <c:set var="activeTab" value="${not empty registerError ? 'signup' : 'signin'}" />
+</c:if>
+<c:set var="regName" value="${requestScope.regName != null ? requestScope.regName : ''}" />
+<c:set var="regEmail" value="${requestScope.regEmail != null ? requestScope.regEmail : ''}" />
+<c:set var="regPhone" value="${requestScope.regPhone != null ? requestScope.regPhone : ''}" />
+<c:set var="regGender" value="${requestScope.regGender != null ? requestScope.regGender : ''}" />
+<c:set var="regRole" value="${requestScope.regRole != null ? requestScope.regRole : 'lecturer'}" />
+<c:set var="regDepartment" value="${requestScope.regDepartment != null ? requestScope.regDepartment : ''}" />
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -667,20 +653,20 @@
 
             <!-- Auth Tabs -->
             <div class="auth-tabs">
-                <button class="tab-btn <%= "signin".equals(activeTab) ? "active" : "" %>" onclick="switchTab('signin')">Sign In</button>
-                <button class="tab-btn <%= "signup".equals(activeTab) ? "active" : "" %>" onclick="switchTab('signup')">Signup</button>
+                <button class="tab-btn <c:if test="${activeTab eq 'signin'}">active</c:if>" onclick="switchTab('signin')">Sign In</button>
+                <button class="tab-btn <c:if test="${activeTab eq 'signup'}">active</c:if>" onclick="switchTab('signup')">Signup</button>
             </div>
 
             <!-- Sign In Section (auth-card + demo section) -->
-            <div id="signinSection" style="width:100%;<%= "signup".equals(activeTab) ? "display:none;" : "" %>">
+            <div id="signinSection" style="width:100%;<c:if test="${activeTab eq 'signup'}">display:none;</c:if>">
                 <div class="auth-card">
                     <h2>Welcome back</h2>
-                    <form id="loginForm" action="<%= ctx %>/login" method="post">
+                    <form id="loginForm" action="${ctx}/login" method="post">
                         <div class="form-group">
                             <label for="loginEmail" class="form-label"><i class="bi bi-envelope-fill"></i> Email Address <span class="required">*</span></label>
                             <input type="email" name="email" class="form-control" id="loginEmail"
                                    placeholder="name.role@egerton.ac.ke"
-                                   value="<%= emailValue != null ? emailValue : "" %>"
+                                   value="${emailValue != null ? emailValue : ''}"
                                    autocomplete="off" required>
                         </div>
                         <div class="form-group">
@@ -692,63 +678,63 @@
                             <i class="bi bi-box-arrow-in-right"></i> Sign In
                         </button>
                     </form>
-                    <% if (errorMessage != null) { %>
+                    <c:if test="${not empty errorMessage}">
                     <div class="alert-custom" style="display:flex;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span><%= errorMessage %></span>
+                        <span><c:out value="${errorMessage}" /></span>
                     </div>
-                    <% } %>
-                    <% if (registerSuccess != null) { %>
+                    </c:if>
+                    <c:if test="${not empty registerSuccess}">
                     <div class="alert-success-custom">
                         <i class="bi bi-check-circle-fill"></i>
-                        <span><%= registerSuccess %></span>
+                        <span><c:out value="${registerSuccess}" /></span>
                     </div>
-                    <% } %>
+                    </c:if>
                 </div>
             </div>
                 
                   <!-- Sign Up Card -->
-            <div id="signupForm" class="auth-card" style="<%= "signin".equals(activeTab) ? "display:none;" : "" %>">
+            <div id="signupForm" class="auth-card" style="<c:if test="${activeTab eq 'signin'}">display:none;</c:if>">
                 <h2>Signup</h2>
-                <form id="registerForm" action="<%= ctx %>/register" method="post">
+                <form id="registerForm" action="${ctx}/register" method="post">
                     <div class="form-group">
                         <label for="regFullName" class="form-label"><i class="bi bi-person-fill"></i> Full Name <span class="required">*</span></label>
                         <input type="text" name="name" class="form-control" id="regFullName"
                                placeholder="e.g., Dr. John Doe"
-                               value="<%= regName %>" required autoComplete="username">
+                               value="${regName}" required autoComplete="username">
                         <div id="nameError" class="error-message text-danger" style="display:none;"></div>
                     </div>
                     <div class="form-group">
                         <label for="regEmail" class="form-label"><i class="bi bi-envelope-fill"></i> Email Address <span class="required">*</span></label>
                         <input type="email" name="email" class="form-control" id="regEmail"
                                placeholder="name.role@egerton.ac.ke"
-                               value="<%= regEmail %>" required autoComplete="email">
+                               value="${regEmail}" required autoComplete="email">
                         <div id="emailError" class="error-message text-danger" style="display:none;"></div>
                     </div>
                     <div class="form-group">
                         <label for="regPhone" class="form-label"><i class="bi bi-telephone-fill"></i> Phone Number <span class="required">*</span></label>
                         <input type="tel" name="phone" class="form-control" id="regPhone"
                                placeholder="0712345678"
-                               value="<%= regPhone %>" required autoComplete="phone">
+                               value="${regPhone}" required autoComplete="phone">
                         <div id="phoneError" class="error-message text-danger" style="display:none;"></div>
                     </div>
                     <div class="form-group">
                         <label for="regGender" class="form-label"><i class="bi bi-venus-mars"></i> Gender <span class="required">*</span></label>
                         <select name="gender" class="form-select" id="regGender" required>
                             <option value="">Select Gender</option>
-                            <option value="Male" <%= "Male".equals(regGender) ? "selected" : "" %>>Male</option>
-                            <option value="Female" <%= "Female".equals(regGender) ? "selected" : "" %>>Female</option>
-                            <option value="Other" <%= "Other".equals(regGender) ? "selected" : "" %>>Other</option>
+                            <option value="Male" <c:if test="${regGender eq 'Male'}">selected</c:if>>Male</option>
+                            <option value="Female" <c:if test="${regGender eq 'Female'}">selected</c:if>>Female</option>
+                            <option value="Other" <c:if test="${regGender eq 'Other'}">selected</c:if>>Other</option>
                         </select>
                         <div id="genderError" class="error-message text-danger" style="display:none;"></div>
                     </div>
                     <div class="form-group">
                         <label for="regRole" class="form-label"><i class="bi bi-briefcase-fill"></i> Role <span class="required">*</span></label>
                         <select name="role" class="form-select" id="regRole" required onchange="updateRoleFields()">
-                            <option value="lecturer" <%= "lecturer".equals(regRole) ? "selected" : "" %>>Lecturer</option>
-                            <option value="janitor" <%= "janitor".equals(regRole) ? "selected" : "" %>>Janitor</option>
-                            <option value="supervisor" <%= "supervisor".equals(regRole) ? "selected" : "" %>>Supervisor</option>
-                            <option value="admin" <%= "admin".equals(regRole) ? "selected" : "" %>>Administrator</option>
+                            <option value="lecturer" <c:if test="${regRole eq 'lecturer'}">selected</c:if>>Lecturer</option>
+                            <option value="janitor" <c:if test="${regRole eq 'janitor'}">selected</c:if>>Janitor</option>
+                            <option value="supervisor" <c:if test="${regRole eq 'supervisor'}">selected</c:if>>Supervisor</option>
+                            <option value="admin" <c:if test="${regRole eq 'admin'}">selected</c:if>>Administrator</option>
                         </select>
                     </div>
                     <div id="roleSpecificFields" class="role-fields-section"></div>
@@ -775,12 +761,12 @@
                         <i class="bi bi-person-plus-fill"></i> Signup
                     </button>
                 </form>
-                <% if (registerError != null) { %>
+                <c:if test="${not empty registerError}">
                 <div class="alert-custom" style="display:flex;margin-top:10px;">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span><%= registerError %></span>
+                    <span><c:out value="${registerError}" /></span>
                 </div>
-                <% } %>
+                </c:if>
           </div>
       </div>
   </div>
@@ -795,10 +781,10 @@
         // ============= SLIDESHOW =============
         
        const backgroundImages = [
-    "<%= ctx %>/Images/Banner28.jpg",
-    "<%= ctx %>/Images/egerton_viewhd.jpg",
-//    "<%= ctx %>/Images/ss7.jpeg",
-    "<%= ctx %>/Images/1.jpg"
+    "${ctx}/Images/Banner28.jpg",
+    "${ctx}/Images/egerton_viewhd.jpg",
+//    "${ctx}/Images/ss7.jpeg",
+    "${ctx}/Images/1.jpg"
 ];
 
 const slideshowContainer = document.getElementById("slideshowContainer");

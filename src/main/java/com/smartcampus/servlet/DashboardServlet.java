@@ -17,6 +17,8 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -110,10 +112,77 @@ public class DashboardServlet extends HttpServlet {
                     jspPath = "/WEB-INF/views/janitor/dashboard.jsp";
                     break;
                 case supervisor:
-                    req.setAttribute("allTasks",        ctDAO.findAll());
-                    req.setAttribute("janitors",        userDAO.findByRole(User.Role.janitor));
-                    req.setAttribute("facilities",      facDAO.findAll());
-                    req.setAttribute("lecturerReports", reportDAO.findAll());
+                    List<CleaningTask> allTasksSupervisor = ctDAO.findAll();
+                    List<User> janitorsSupervisor = userDAO.findByRole(User.Role.janitor);
+                    var lecturerReportsSupervisor = reportDAO.findAll();
+
+                    // Deadline logic: used by supervisor views to show "Past 8:00 AM" badges
+                    LocalDate todaySupervisor = LocalDate.now();
+                    boolean afterDeadlineSupervisor = LocalTime.now().isAfter(LocalTime.of(8, 0));
+
+                    Map<Integer, Boolean> deadlineBreachedMap = new LinkedHashMap<>();
+                    int overdueCountSupervisor = 0;
+                    for (CleaningTask t : allTasksSupervisor) {
+                        boolean deadlineBreached = afterDeadlineSupervisor
+                                && t.getScheduledDate() != null
+                                && !t.getScheduledDate().isAfter(todaySupervisor)
+                                && t.getStatus() != CleaningTask.Status.completed;
+                        deadlineBreachedMap.put(t.getId(), deadlineBreached);
+                        if (deadlineBreached) overdueCountSupervisor++;
+                    }
+
+                    // Janitor performance summaries (task totals + completion %)
+                    Map<Integer, Long> janitorTotalMap = new LinkedHashMap<>();
+                    Map<Integer, Long> janitorCompletedMap = new LinkedHashMap<>();
+                    Map<Integer, Integer> janitorPctMap = new LinkedHashMap<>();
+                    Map<Integer, String> janitorInitialMap = new LinkedHashMap<>();
+
+                    for (User j : janitorsSupervisor) {
+                        janitorTotalMap.put(j.getId(), 0L);
+                        janitorCompletedMap.put(j.getId(), 0L);
+                        String name = j.getName();
+                        String initial = (name != null && !name.isBlank())
+                                ? String.valueOf(Character.toUpperCase(name.charAt(0)))
+                                : "J";
+                        janitorInitialMap.put(j.getId(), initial);
+                    }
+                    for (CleaningTask t : allTasksSupervisor) {
+                        int janitorId = t.getAssignedTo();
+                        if (!janitorTotalMap.containsKey(janitorId)) continue;
+
+                        janitorTotalMap.put(janitorId, janitorTotalMap.get(janitorId) + 1);
+                        if (t.getStatus() == CleaningTask.Status.completed) {
+                            janitorCompletedMap.put(janitorId, janitorCompletedMap.get(janitorId) + 1);
+                        }
+                    }
+                    for (User j : janitorsSupervisor) {
+                        long total = janitorTotalMap.getOrDefault(j.getId(), 0L);
+                        long completed = janitorCompletedMap.getOrDefault(j.getId(), 0L);
+                        int pct = total > 0 ? (int) ((completed * 100) / total) : 0;
+                        janitorPctMap.put(j.getId(), pct);
+                    }
+
+                    // Format dispute report timestamps for display (java.time isn't supported by fmt tags)
+                    DateTimeFormatter reportDtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                    Map<Integer, String> reportReportedAtMap = new LinkedHashMap<>();
+                    for (var r : lecturerReportsSupervisor) {
+                        String formatted = (r.getReportedAt() != null) ? reportDtf.format(r.getReportedAt()) : "—";
+                        reportReportedAtMap.put(r.getId(), formatted);
+                    }
+
+                    req.setAttribute("allTasks", allTasksSupervisor);
+                    req.setAttribute("janitors", janitorsSupervisor);
+                    req.setAttribute("facilities", facDAO.findAll());
+                    req.setAttribute("lecturerReports", lecturerReportsSupervisor);
+                    req.setAttribute("deadlineBreachedMap", deadlineBreachedMap);
+                    req.setAttribute("overdueCount", overdueCountSupervisor);
+                    req.setAttribute("today", todaySupervisor);
+                    req.setAttribute("afterDeadline", afterDeadlineSupervisor);
+                    req.setAttribute("janitorTotalMap", janitorTotalMap);
+                    req.setAttribute("janitorCompletedMap", janitorCompletedMap);
+                    req.setAttribute("janitorPctMap", janitorPctMap);
+                    req.setAttribute("janitorInitialMap", janitorInitialMap);
+                    req.setAttribute("reportReportedAtMap", reportReportedAtMap);
                     jspPath = "/WEB-INF/views/supervisor/dashboard.jsp";
                     break;
                 default:
